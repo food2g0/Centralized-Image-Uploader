@@ -2,6 +2,8 @@
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from tkinter import ttk
+from tkcalendar import DateEntry  # Make sure to install tkcalendar: pip install tkcalendar
 import os
 import time
 from firebase_config import storage, db
@@ -23,6 +25,15 @@ def open_dashboard(user_data):
     branch = user_data["branch"]
 
     def upload_images():
+        transaction_type = transaction_var.get()
+        selected_date = date_var.get()
+        if not transaction_type:
+            messagebox.showerror("Missing Info", "Please select a transaction type.")
+            return
+        if not selected_date:
+            messagebox.showerror("Missing Info", "Please select a date.")
+            return
+
         files = filedialog.askopenfilenames(filetypes=[("Images", "*.png;*.jpg;*.jpeg")])
         if not files:
             return
@@ -35,7 +46,7 @@ def open_dashboard(user_data):
             try:
                 filename = os.path.basename(file_path)
                 timestamp = str(int(time.time()))
-                storage_path = f"{branch}/{timestamp}_{filename}"
+                storage_path = f"{branch}/{transaction_type}/{selected_date}_{timestamp}_{filename}"
 
                 # Upload to Firebase Storage
                 storage.child(storage_path).put(file_path)
@@ -46,6 +57,8 @@ def open_dashboard(user_data):
                 # Save to Firestore
                 db.collection("Uploaded_Images").add({
                     "branch": branch,
+                    "transaction_type": transaction_type,
+                    "date": selected_date,
                     "image_url": url,
                     "filename": filename,
                     "timestamp": firestore.SERVER_TIMESTAMP
@@ -77,9 +90,23 @@ def open_dashboard(user_data):
 
     # Card-like main area
     card = tk.Frame(dash, bg="#fff", bd=2, relief="groove")
-    card.place(relx=0.5, rely=0.55, anchor="center", width=400, height=220)
+    card.place(relx=0.5, rely=0.55, anchor="center", width=400, height=260)
 
     tk.Label(card, text="Upload Images", font=("Poppins", 14, "bold"), bg="#fff", fg="#192a56").pack(pady=(18, 8))
+
+    # Transaction type dropdown
+    tk.Label(card, text="Transaction Type:", font=("Poppins", 11), bg="#fff").pack()
+    transaction_var = tk.StringVar()
+    transaction_types = ["Deposit", "Withdrawal", "Transfer", "Other"]
+    transaction_dropdown = ttk.Combobox(card, textvariable=transaction_var, values=transaction_types, state="readonly", font=("Poppins", 10))
+    transaction_dropdown.pack(pady=2)
+
+    # Date picker
+    tk.Label(card, text="Select Date:", font=("Poppins", 11), bg="#fff").pack()
+    date_var = tk.StringVar()
+    date_picker = DateEntry(card, textvariable=date_var, date_pattern="yyyy-mm-dd", font=("Poppins", 10))
+    date_picker.pack(pady=2)
+
     progress_label = tk.Label(card, text="", font=("Poppins", 11), fg="#0097e6", bg="#fff")
     progress_label.pack(pady=2)
 
