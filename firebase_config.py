@@ -4,14 +4,15 @@ from firebase_admin import credentials, firestore
 
 
 firebase_config = {
-  "apiKey": "AIzaSyDyoYCZpanf7BIlfi7ZOtYOEDKdjLl7M1s",
-  "authDomain": "food2go-44539.firebaseapp.com",
-  "databaseURL": "https://food2go-44539-default-rtdb.asia-southeast1.firebasedatabase.app",
-  "projectId": "food2go-44539",
-  "storageBucket": "food2go-44539.appspot.com",
-  "messagingSenderId": "844894233705",
-  "appId": "1:844894233705:web:9a67330b4ffa82d2a1eef8",
-  "measurementId": "G-576G92N335"
+
+  "apiKey": "AIzaSyCsynYGglyDldPZ15LniRS-lOvYa50Zyns",
+  "authDomain": "records-management-faffa.firebaseapp.com",
+  "projectId": "records-management-faffa",
+  "storageBucket": "records-management-faffa.firebasestorage.app",
+  "messagingSenderId": "344649128709",
+  "appId": "1:344649128709:web:b7b02511caaf5633e9356c",
+  "measurementId": "G-BHVLRPV7J8",
+  "databaseURL": "https://records-management-faffa.firebaseio.com"
 }
 
 

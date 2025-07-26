@@ -1,5 +1,3 @@
-# admin_dashboard.py
-
 import tkinter as tk
 from tkinter import messagebox, filedialog
 from firebase_config import db
@@ -8,53 +6,80 @@ import requests
 from io import BytesIO
 
 def open_admin_dashboard():
+   
     def get_next_username():
         try:
             users = db.collection("Users_db").stream()
-            nums = []
+            max_id = 0
             for user in users:
-                udata = user.to_dict()
-                uname = udata.get("username", "")
+                data = user.to_dict()
+                uname = data.get("username", "")
                 if uname.startswith("usr-"):
                     try:
-                        nums.append(int(uname.split("-")[1]))
-                    except:
-                        pass
-            next_num = max(nums) + 1 if nums else 1
-            return f"usr-{next_num:05d}"
-        except Exception:
+                        num = int(uname.split("-")[1])
+                        max_id = max(max_id, num)
+                    except ValueError:
+                        continue
+            next_id = max_id + 1
+            return f"usr-{next_id:05d}"
+        except Exception as e:
+            print(f"Error fetching username: {e}")
             return "usr-00001"
 
+
     def open_add_user_popup():
-        popup = tk.Toplevel(admin)
+        popup = tk.Toplevel()
         popup.title("Add User")
-        popup.geometry("350x320")
+        popup.geometry("300x200")
         popup.grab_set()
 
-        tk.Label(popup, text="Add New User", font=("Arial", 14)).pack(pady=10)
+        form_frame = tk.Frame(popup)
+        form_frame.pack(pady=20)
 
-        uname_var = tk.StringVar(value=get_next_username())
+        # Username variable
+        uname_var = tk.StringVar()
+
+        # Function to refresh the username
+        def refresh_username():
+            try:
+                new_uname = get_next_username()
+                print("Generated username:", new_uname)  # Debug print
+                uname_var.set(new_uname)
+            except Exception as e:
+                print("Error in refresh_username:", e)
+
+        # Call refresh_username once when popup opens
+        refresh_username()
+
+        # Username Label and Entry
+        uname_label = tk.Label(form_frame, text="Username:", font=("Arial", 11))
+        uname_label.grid(row=0, column=0, sticky="e", padx=5)
+
+        uname_entry = tk.Entry(form_frame, textvariable=uname_var, font=("Arial", 11), state="readonly")
+        uname_entry.grid(row=0, column=1, pady=5)
+
+        # Refresh button beside entry
+        refresh_btn = tk.Button(form_frame, text="↻", command=refresh_username, font=("Arial", 10), width=3)
+        refresh_btn.grid(row=0, column=2, padx=2)
+
+        # Password, Confirm Password, Branch
         pwd_var = tk.StringVar()
         cpwd_var = tk.StringVar()
         branch_var = tk.StringVar()
 
-        form_frame = tk.Frame(popup)
-        form_frame.pack(pady=5)
-
-        tk.Label(form_frame, text="Username:", font=("Arial", 11)).grid(row=0, column=0, sticky="e", pady=5)
-        uname_entry = tk.Entry(form_frame, textvariable=uname_var, font=("Arial", 11), state="readonly")
-        uname_entry.grid(row=0, column=1, pady=5)
-
-        tk.Label(form_frame, text="Password:", font=("Arial", 11)).grid(row=1, column=0, sticky="e", pady=5)
+        pwd_label = tk.Label(form_frame, text="Password:", font=("Arial", 11))
+        pwd_label.grid(row=1, column=0, sticky="e", padx=5)
         pwd_entry = tk.Entry(form_frame, textvariable=pwd_var, font=("Arial", 11), show="*")
         pwd_entry.grid(row=1, column=1, pady=5)
 
-        tk.Label(form_frame, text="Confirm Password:", font=("Arial", 11)).grid(row=2, column=0, sticky="e", pady=5)
+        cpwd_label = tk.Label(form_frame, text="Confirm Password:", font=("Arial", 11))
+        cpwd_label.grid(row=2, column=0, sticky="e", padx=5)
         cpwd_entry = tk.Entry(form_frame, textvariable=cpwd_var, font=("Arial", 11), show="*")
         cpwd_entry.grid(row=2, column=1, pady=5)
 
-        tk.Label(form_frame, text="Branch:", font=("Arial", 11)).grid(row=3, column=0, sticky="e", pady=5)
-        branch_entry = tk.Entry(form_frame, textvariable=branch_var, font=("Arial", 11), width=16)
+        branch_label = tk.Label(form_frame, text="Branch:", font=("Arial", 11))
+        branch_label.grid(row=3, column=0, sticky="e", padx=5)
+        branch_entry = tk.Entry(form_frame, textvariable=branch_var, font=("Arial", 11))
         branch_entry.grid(row=3, column=1, pady=5)
 
         def submit_user():
@@ -82,8 +107,7 @@ def open_admin_dashboard():
             except Exception as err:
                 messagebox.showerror("Error", f"Could not add user: {err}", parent=popup)
 
-        tk.Button(popup, text="Add User", font=("Arial", 11), bg="#27ae60", fg="white", command=submit_user).pack(pady=15), 
-        # Cancel button
+        tk.Button(popup, text="Add User", font=("Arial", 11), bg="#27ae60", fg="white", command=submit_user).pack(pady=15)
         tk.Button(popup, text="Cancel", font=("Arial", 10), command=popup.destroy).pack()
     admin = tk.Tk()
     admin.title("Admin Dashboard - View Uploads")
@@ -102,7 +126,7 @@ def open_admin_dashboard():
     main_frame = tk.Frame(admin, bg="#ecf0f1")
     main_frame.pack(side="left", fill=tk.BOTH, expand=True)
 
-    tk.Label(main_frame, text="Uploaded Images", font=("Arial", 16), bg="#ecf0f1").pack(pady=10)
+    tk.Label(main_frame, text="Record Management System", font=("Arial", 16), bg="#f1ecec").pack(pady=10)
 
     frame = tk.Frame(main_frame, bg="#ecf0f1")
     frame.pack(fill=tk.BOTH, expand=True)
@@ -129,116 +153,190 @@ def open_admin_dashboard():
 
     canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
-    image_refs = []  # Prevent GC
+    image_refs = []
 
-    # --- Branch selection ---
-    try:
-        docs = db.collection("Uploaded_Images").stream()
-        branches = set()
-        images_by_branch = {}
-        for doc in docs:
-            data = doc.to_dict()
-            branch = data.get("branch", "Unknown Branch")
-            branches.add(branch)
-            images_by_branch.setdefault(branch, []).append(data)
+    docs = db.collection("Uploaded_Images").stream()
+    branches = set()
+    images_by_branch = {}
 
-        branches = sorted(branches)
+    for doc in docs:
+        data = doc.to_dict()
+        branch = data.get("branch", "Unknown")
+        data["doc_id"] = doc.id  # Store doc_id for deletion
+        branches.add(branch)
+        images_by_branch.setdefault(branch, []).append(data)
 
-        selected_branch = tk.StringVar()
-        selected_branch.set(branches[0] if branches else "")
+    branches = sorted(branches)
 
-        def show_images(branch):
-            # Clear previous images
+    def show_images(branch):
+        for widget in scroll_frame.winfo_children():
+            widget.destroy()
+        image_refs.clear()
+        # --- Filtering UI ---
+        filter_frame = tk.Frame(scroll_frame, bg="#ecf0f1")
+        filter_frame.pack(pady=(10, 0), fill="x")
+
+        # Transaction type dropdown
+        all_images = images_by_branch.get(branch, [])
+        transaction_types = sorted(set(img.get("transaction_type", "") for img in all_images if img.get("transaction_type")))
+        transaction_types = ["All"] + transaction_types
+        trans_type_var = tk.StringVar(value="All")
+        tk.Label(filter_frame, text="Transaction Type:", font=("Arial", 10), bg="#ecf0f1").pack(side="left", padx=(0, 2))
+        trans_type_menu = tk.OptionMenu(filter_frame, trans_type_var, *transaction_types)
+        trans_type_menu.config(font=("Arial", 10))
+        trans_type_menu.pack(side="left", padx=(0, 10))
+
+        # Date of transaction picker (using tkcalendar)
+        try:
+            from tkcalendar import DateEntry
+        except ImportError:
+            tk.Label(filter_frame, text="[tkcalendar not installed]", font=("Arial", 10), fg="red", bg="#ecf0f1").pack(side="left", padx=(0, 2))
+            DateEntry = None
+        tk.Label(filter_frame, text="Date:", font=("Arial", 10), bg="#ecf0f1").pack(side="left", padx=(0, 2))
+        date_var = tk.StringVar()
+        if 'DateEntry' in locals() and DateEntry:
+            date_picker = DateEntry(filter_frame, textvariable=date_var, font=("Arial", 10), width=12, date_pattern='yyyy-mm-dd')
+            date_picker.pack(side="left", padx=(0, 10))
+        else:
+            date_entry = tk.Entry(filter_frame, textvariable=date_var, font=("Arial", 10), width=12)
+            date_entry.pack(side="left", padx=(0, 10))
+
+        def apply_filters(*args):
+            ttype = trans_type_var.get()
+            # Always get the value from the widget if using DateEntry
+            if 'date_picker' in locals():
+                date_val = date_picker.get().strip()
+            else:
+                date_val = date_var.get().strip()
+            print(f"[DEBUG] Filter values: transaction_type='{ttype}', date='{date_val}'")
+            print(f"[DEBUG] All image dates: {[img.get('date','') for img in all_images]}")
+            filtered = all_images
+            # Apply both filters together
+            if ttype != "All" and date_val:
+                filtered = [img for img in all_images if img.get("transaction_type", "") == ttype and img.get("date", "") == date_val]
+            elif ttype != "All":
+                filtered = [img for img in all_images if img.get("transaction_type", "") == ttype]
+            elif date_val:
+                filtered = [img for img in all_images if img.get("date", "") == date_val]
+            print(f"[DEBUG] Filtered images count: {len(filtered)}")
+            if filtered:
+                print(f"[DEBUG] First filtered image: {filtered[0]}")
+            display_images(filtered)
+
+        filter_btn = tk.Button(filter_frame, text="Apply Filters", font=("Arial", 10), bg="#2980b9", fg="white", command=apply_filters)
+        filter_btn.pack(side="left", padx=(0, 2))
+        # Trigger filter on date picker selection for better UX
+        if 'date_picker' in locals():
+            date_picker.bind("<<DateEntrySelected>>", apply_filters)
+        trans_type_var.trace_add('write', lambda *a: apply_filters())
+
+        # Loading indicator
+        loading_label = tk.Label(scroll_frame, text="Loading images...", font=("Arial", 12), fg="#2980b9", bg="#ecf0f1")
+        loading_label.pack(pady=20)
+        scroll_frame.update_idletasks()
+
+        def display_images(images):
             for widget in scroll_frame.winfo_children():
-                widget.destroy()
+                # Don't destroy filter_frame
+                if widget != filter_frame:
+                    widget.destroy()
             image_refs.clear()
-            # Loading indicator
-            loading_label = tk.Label(scroll_frame, text="Loading images...", font=("Arial", 12), fg="#2980b9", bg="#ecf0f1")
-            loading_label.pack(pady=20)
-            scroll_frame.update_idletasks()
-
-            images = images_by_branch.get(branch, [])
-            # Remove loading indicator before showing images
-            loading_label.destroy()
-            for data in images:
-                filename = data.get("filename", "No name")
-                image_url = data.get("image_url", "")
-                branchname = data.get("branch", "Unknown Branch")
-                timestamp = data.get("timestamp", "No timestamp")
-                doc_id = data.get("doc_id") if "doc_id" in data else None
+            if not images:
+                tk.Label(scroll_frame, text="No images found.", font=("Arial", 12), fg="#c0392b", bg="#ecf0f1").pack(pady=20)
+                return
+            for img in images:
+                frame = tk.Frame(scroll_frame, bg="white", relief="raised", bd=2)
+                frame.pack(padx=10, pady=10, fill="x")
+                photo = None
+                img_label = tk.Label(frame, bg="white")
                 try:
-                    response = requests.get(image_url)
-                    img_data = BytesIO(response.content)
-                    img = Image.open(img_data).resize((180, 180))
-                    photo = ImageTk.PhotoImage(img)
-                    image_refs.append(photo)
-                    container = tk.Frame(scroll_frame, bd=1, relief="solid", padx=10, pady=5, bg="#fff")
-                    container.pack(padx=10, pady=10, fill="x")
-                    tk.Label(container, image=photo, bg="#fff").pack(side="left", padx=10)
-                    info_frame = tk.Frame(container, bg="#fff")
-                    info_frame.pack(side="left", fill="y", expand=True)
-                    tk.Label(info_frame, text=f"📁 File: {filename}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
-                    tk.Label(info_frame, text=f"📁 Branch: {branchname}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
-                    tk.Label(info_frame, text=f"📁 Timestamp: {timestamp}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
-                    # Download button
-                    def download_image(url=image_url, fname=filename):
-                        try:
-                            save_path = filedialog.asksaveasfilename(initialfile=fname, defaultextension=".jpg",
-                                filetypes=[("JPEG Image", "*.jpg;*.jpeg"), ("PNG Image", "*.png"), ("All Files", "*.*")])
-                            if not save_path:
-                                return
-                            img_data = requests.get(url).content
-                            with open(save_path, "wb") as f:
-                                f.write(img_data)
-                            messagebox.showinfo("Download", f"Downloaded to {save_path}")
-                        except Exception as err:
-                            messagebox.showerror("Download Error", f"Could not download {fname}: {err}")
+                    response = requests.get(img["image_url"], timeout=10)
+                    # print(f"Fetching image from: {img['image_url']}")
+                    if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
+                        image_data = BytesIO(response.content)
+                        pil_img = Image.open(image_data).convert("RGB")
+                        pil_img.thumbnail((180, 180))
+                        photo = ImageTk.PhotoImage(pil_img, master=admin)
+                        img_label.config(image=photo)
+                        img_label.image = photo  
+                        image_refs.append(photo)  # Also keep in list
+                    else:
+                        img_label.config(text="❌ Failed to load image", fg="red")
+                except Exception as e:
+                    print("Image load error:", e)
+                    img_label.config(text="❌ Failed to load image", fg="red")
+                img_label.pack(side="left", padx=10)
 
-                    dl_btn = tk.Button(info_frame, text="Download", font=("Arial", 9), bg="#27ae60", fg="white",
-                                      command=download_image)
-                    dl_btn.pack(side="left", padx=4, pady=4)
+                # --- Info section ---
+                info_frame = tk.Frame(frame, bg="white")
+                info_frame.pack(side="left", padx=10, fill="x", expand=True)
+                filename = img.get("filename", "")
+                branchname = img.get("branch", "")
+                timestamp = img.get("timestamp", "")
+                selected_date = img.get("date", "")
+                transaction_type = img.get("transaction_type", "")
+                image_url = img.get("image_url", "")
+                tk.Label(info_frame, text=f"📁 File: {filename}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
+                tk.Label(info_frame, text=f"📁 Branch: {branchname}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
+                tk.Label(info_frame, text=f"📁 Timestamp: {timestamp}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
+                tk.Label(info_frame, text=f"📁 Date of Transaction: {selected_date}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
+                tk.Label(info_frame, text=f"📁 Transaction type: {transaction_type}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
 
-                    # Delete button
-                    def delete_image(doc_data=data, cont=container):
-                        try:
-                            # Find Firestore doc by matching all fields (or use doc_id if available)
-                            docs = db.collection("Uploaded_Images").where("filename", "==", doc_data.get("filename")).where("image_url", "==", doc_data.get("image_url")).where("branch", "==", doc_data.get("branch")).stream()
-                            for d in docs:
-                                d.reference.delete()
-                            cont.destroy()
-                            messagebox.showinfo("Delete", f"Deleted {doc_data.get('filename')}")
-                        except Exception as err:
-                            messagebox.showerror("Delete Error", f"Could not delete {doc_data.get('filename')}: {err}")
+                def download_image(url=image_url, fname=filename):
+                    try:
+                        save_path = filedialog.asksaveasfilename(initialfile=fname, defaultextension=".jpg",
+                            filetypes=[("JPEG Image", "*.jpg;*.jpeg"), ("PNG Image", "*.png"), ("All Files", "*.*")])
+                        if not save_path:
+                            return
+                        img_data = requests.get(url).content
+                        with open(save_path, "wb") as f:
+                            f.write(img_data)
+                        messagebox.showinfo("Download", f"Downloaded to {save_path}")
+                    except Exception as err:
+                        messagebox.showerror("Download Error", f"Could not download {fname}: {err}")
 
-                    del_btn = tk.Button(info_frame, text="Delete", font=("Arial", 9), bg="#c0392b", fg="white",
-                                      command=lambda d=data, c=container: delete_image(d, c))
-                    del_btn.pack(side="left", padx=4, pady=4)
+                dl_btn = tk.Button(info_frame, text="Download", font=("Arial", 9), bg="#27ae60", fg="white",
+                                  command=download_image)
+                dl_btn.pack(side="left", padx=4, pady=4)
 
-                except Exception as img_err:
-                    print("Image load error:", img_err)
-                    tk.Label(scroll_frame, text=f"Error loading image for {filename}", fg="red", bg="#fff").pack()
+                def delete_image(doc_data=img, cont=frame):
+                    try:
+                        docs = db.collection("Uploaded_Images").where("filename", "==", doc_data.get("filename")).where("image_url", "==", doc_data.get("image_url")).where("branch", "==", doc_data.get("branch")).stream()
+                        for d in docs:
+                            d.reference.delete()
+                        cont.destroy()
+                        messagebox.showinfo("Delete", f"Deleted {doc_data.get('filename')}")
+                    except Exception as err:
+                        messagebox.showerror("Delete Error", f"Could not delete {doc_data.get('filename')}: {err}")
+
+                del_btn = tk.Button(info_frame, text="Delete", font=("Arial", 9), bg="#c0392b", fg="white",
+                                  command=lambda d=img, c=frame: delete_image(d, c))
+                del_btn.pack(side="left", padx=4, pady=4)
+
+        loading_label.destroy()
+        display_images(all_images)
 
         # Sidebar: Select Branches button, then show all branches as buttons
-        tk.Label(sidebar, text="Welcome Admin", font=("Poppins", 12), bg="#2c3e50", fg="white").pack(pady=(60,10))
-        branches_frame = tk.Frame(sidebar, bg="#2c3e50")
-        search_frame = tk.Frame(sidebar, bg="#2c3e50")
+    tk.Label(sidebar, text="Welcome Admin", font=("Poppins", 12), bg="#2c3e50", fg="white").pack(pady=(60,10))
+    branches_frame = tk.Frame(sidebar, bg="#2c3e50")
+    search_frame = tk.Frame(sidebar, bg="#2c3e50")
 
-        search_var = tk.StringVar()
+    search_var = tk.StringVar()
 
-        def show_branch_buttons(filtered=None):
+    def show_branch_buttons(filtered=None):
             for widget in branches_frame.winfo_children():
                 widget.destroy()
             show_list = filtered if filtered is not None else branches
             for branch in show_list:
                 btn = tk.Button(branches_frame, text=branch, font=("Arial", 11), bg="#34495e", fg="white", width=18,
-                                command=lambda b=branch: show_images(b))
+                command=lambda b=branch: show_images(b))
                 btn.pack(pady=2)
             branches_frame.pack(pady=5)
 
-        branches_visible = [False]
+    branches_visible = [False]
 
 
-        def toggle_branch_buttons():
+    def toggle_branch_buttons():
             if branches_visible[0]:
                 branches_frame.pack_forget()
                 search_frame.pack_forget()
@@ -262,14 +360,14 @@ def open_admin_dashboard():
                 show_branch_buttons()
                 branches_visible[0] = True
 
-        btn_width = 18
-        select_btn = tk.Button(sidebar, text="Select Branches", font=("Arial", 11), bg="#2980b9", fg="white", command=toggle_branch_buttons, width=btn_width)
-        select_btn.pack(pady=5)
+    btn_width = 18
+    select_btn = tk.Button(sidebar, text="Select Branches", font=("Arial", 11), bg="#2980b9", fg="white", command=toggle_branch_buttons, width=btn_width)
+    select_btn.pack(pady=5)
 
-        add_user_btn = tk.Button(sidebar, text="Add User", font=("Arial", 11), bg="#27ae60", fg="white", command=open_add_user_popup, width=btn_width)
-        add_user_btn.pack(pady=5)
+    add_user_btn = tk.Button(sidebar, text="Add User", font=("Arial", 11), bg="#27ae60", fg="white", command=open_add_user_popup, width=btn_width)
+    add_user_btn.pack(pady=5)
 
-        def logout():
+    def logout():
             admin.destroy()
             try:
                 import login_gui
@@ -282,11 +380,8 @@ def open_admin_dashboard():
             except Exception as err:
                 messagebox.showerror("Error", f"Could not open login: {err}")
 
-        logout_btn = tk.Button(sidebar, text="Logout", font=("Arial", 11), bg="#c0392b", fg="white", command=logout, width=btn_width)
-        logout_btn.pack(pady=5)
+    logout_btn = tk.Button(sidebar, text="Logout", font=("Arial", 11), bg="#c0392b", fg="white", command=logout, width=btn_width)
+    logout_btn.pack(pady=5)
 
-    except Exception as e:
-        print("Firestore error:", e)
-        messagebox.showerror("Error", f"Could not fetch data:\n{e}")
 
     admin.mainloop()
