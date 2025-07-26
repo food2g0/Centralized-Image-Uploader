@@ -3,7 +3,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk
-from tkcalendar import DateEntry  # Make sure to install tkcalendar: pip install tkcalendar
+from tkcalendar import DateEntry  
 import os
 import time
 from firebase_config import storage, db
@@ -25,6 +25,8 @@ def open_dashboard(user_data):
     branch = user_data["branch"]
 
     def upload_images():
+        transaction_dropdown.update_idletasks()
+        date_picker.update_idletasks()
         transaction_type = transaction_var.get()
         selected_date = date_var.get()
         if not transaction_type:
@@ -46,7 +48,9 @@ def open_dashboard(user_data):
             try:
                 filename = os.path.basename(file_path)
                 timestamp = str(int(time.time()))
-                storage_path = f"{branch}/{transaction_type}/{selected_date}_{timestamp}_{filename}"
+                # Ensure branch is not empty and path is correct
+                branch_folder = branch if branch else "Unknown_Branch"
+                storage_path = f"{branch_folder}/{selected_date}_{timestamp}_{filename}"
 
                 # Upload to Firebase Storage
                 storage.child(storage_path).put(file_path)
@@ -54,15 +58,17 @@ def open_dashboard(user_data):
                 # Get download URL
                 url = storage.child(storage_path).get_url(None)
 
-                # Save to Firestore
-                db.collection("Uploaded_Images").add({
+                # Save to Firestore: Uploaded_Images/{unique_id}/{transaction_type}/{auto_id}
+                doc_data = {
                     "branch": branch,
                     "transaction_type": transaction_type,
                     "date": selected_date,
                     "image_url": url,
                     "filename": filename,
                     "timestamp": firestore.SERVER_TIMESTAMP
-                })
+                }
+                
+                db.collection("Uploaded_Images").add(doc_data)
 
                 uploaded += 1
                 progress_label.config(text=f"Uploading {uploaded}/{len(files)} images...")
@@ -78,7 +84,7 @@ def open_dashboard(user_data):
     # Create new root for dashboard
     dash = tk.Tk()
     dash.title(f"Dashboard - {branch}")
-    dash.geometry("480x340")
+    dash.geometry("680x540")
     dash.resizable(False, False)
     dash.configure(bg="#f5f6fa")
 
@@ -90,22 +96,32 @@ def open_dashboard(user_data):
 
     # Card-like main area
     card = tk.Frame(dash, bg="#fff", bd=2, relief="groove")
-    card.place(relx=0.5, rely=0.55, anchor="center", width=400, height=260)
+    card.place(relx=0.5, rely=0.55, anchor="center", width=400, height=360)
 
     tk.Label(card, text="Upload Images", font=("Poppins", 14, "bold"), bg="#fff", fg="#192a56").pack(pady=(18, 8))
 
     # Transaction type dropdown
     tk.Label(card, text="Transaction Type:", font=("Poppins", 11), bg="#fff").pack()
-    transaction_var = tk.StringVar()
-    transaction_types = ["Deposit", "Withdrawal", "Transfer", "Other"]
+    transaction_types = ["Palawan Payout", "Palawan Sendout", "Money Changer", "KYC Records"]
+    transaction_var = tk.StringVar(value=transaction_types[0])
     transaction_dropdown = ttk.Combobox(card, textvariable=transaction_var, values=transaction_types, state="readonly", font=("Poppins", 10))
+    transaction_dropdown.current(0)
     transaction_dropdown.pack(pady=2)
+    def on_transaction_selected(event):
+        transaction_var.set(transaction_dropdown.get())
+    transaction_dropdown.bind("<<ComboboxSelected>>", on_transaction_selected)
 
     # Date picker
     tk.Label(card, text="Select Date:", font=("Poppins", 11), bg="#fff").pack()
-    date_var = tk.StringVar()
+    import datetime
+    today_str = datetime.date.today().strftime("%Y-%m-%d")
+    date_var = tk.StringVar(value=today_str)
     date_picker = DateEntry(card, textvariable=date_var, date_pattern="yyyy-mm-dd", font=("Poppins", 10))
+    date_picker.set_date(datetime.date.today())
     date_picker.pack(pady=2)
+    def on_date_selected(event):
+        date_var.set(date_picker.get())
+    date_picker.bind("<<DateEntrySelected>>", on_date_selected)
 
     progress_label = tk.Label(card, text="", font=("Poppins", 11), fg="#0097e6", bg="#fff")
     progress_label.pack(pady=2)
