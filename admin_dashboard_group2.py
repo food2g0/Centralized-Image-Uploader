@@ -3,10 +3,10 @@ from tkinter import messagebox, filedialog
 from firebase_config import db
 from PIL import Image, ImageTk
 import requests
-from add_user import open_add_user_popup
+from add_user_group2 import open_add_user_popup_group2
 from io import BytesIO
 
-def open_admin_dashboard_group3(admin_data):
+def open_admin_dashboard_group2(admin_data):
     admin = tk.Tk()  
     admin.title("Admin Dashboard")
     admin.geometry("1024x720")
@@ -53,12 +53,10 @@ def open_admin_dashboard_group3(admin_data):
     canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
     image_refs = []
-    
-    group3_corporations = {
-        "ALEXITE (J)", "GOLDSTAR ATLANTIC", "GOOD QUALITY ASSURANCE", "HOMENEEDS",
-        "INTER WORLD GEM", "KRISTAL CLEAR DIAMOND (J)", "MONEYMAX", "MULTIGAINED",
-        "PRIMARY MAX", "PRINCESS CUT (J)", "SAFELOCK",
-        "SUREPLEDGE", "UNIWORLD-ASIA", "YELLOW ENDURANCE"
+
+    group2_corporations = {
+        "ASIAPHIL STAR", "MAJOREVIM", "MEGAWORLD DOMESTIC", "NORTHERN SUNSTAR",
+        "SAINT BARBARA PRIME", "SAN RAMON PLATINUM", "SILVERSTAR (J)"
         }
 
 # Fetch all uploaded images
@@ -69,7 +67,7 @@ def open_admin_dashboard_group3(admin_data):
     for doc in docs:
         data = doc.to_dict()
         corp = data.get("corporations", "").strip().upper()
-    if corp in group3_corporations:
+    if corp in group2_corporations:
         branch = data.get("branch", "Unknown")
         data["doc_id"] = doc.id
         branches.add(branch)
@@ -247,7 +245,6 @@ def open_admin_dashboard_group3(admin_data):
 
 
     def toggle_branch_buttons():
-            
             if branches_visible[0]:
                 branches_frame.pack_forget()
                 search_frame.pack_forget()
@@ -275,7 +272,7 @@ def open_admin_dashboard_group3(admin_data):
     select_btn = tk.Button(sidebar, text="Select Branches", font=("Arial", 11), bg="#2980b9", fg="white", command=toggle_branch_buttons, width=btn_width)
     select_btn.pack(pady=5)
 
-    add_user_btn = tk.Button(sidebar, text="Add User", font=("Arial", 11), bg="#27ae60", fg="white", command=lambda: open_add_user_popup(admin), width=btn_width)
+    add_user_btn = tk.Button(sidebar, text="Add User", font=("Arial", 11), bg="#27ae60", fg="white", command=lambda: open_add_user_popup_group2(admin), width=btn_width)
     add_user_btn.pack(pady=5)
 
     def logout():
