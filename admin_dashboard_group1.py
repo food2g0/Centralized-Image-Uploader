@@ -1,21 +1,12 @@
-import tkinter as tk
-from tkinter import messagebox, filedialog
-from firebase_config import db
-from PIL import Image, ImageTk
-import requests
-from add_user_group1 import open_add_user_popup_group1
-from io import BytesIO
-
-# ... [Keep your imports and firebase_config, etc.]
-
 def open_admin_dashboard_group1(admin_data):
     import tkinter as tk
     from tkinter import messagebox, filedialog
-    from firebase_config import db
+    from firebase_config import db, bucket
     from PIL import Image, ImageTk
     import requests
     from add_user_group1 import open_add_user_popup_group1
     from io import BytesIO
+    from threading import Thread
 
     admin = tk.Tk()  
     admin.title("Admin Dashboard")
@@ -23,7 +14,7 @@ def open_admin_dashboard_group1(admin_data):
 
     sidebar = tk.Frame(admin, width=220, bg="#2c3e50", height=800, relief="raised")
     sidebar.pack(side="left", fill="y")
-    sidebar.pack_propagate(False) 
+    sidebar.pack_propagate(False)
 
     hamburger_btn = tk.Button(admin, text="☰", font=("Arial", 18), bg="#34495e", fg="white", bd=0, state="disabled")
     hamburger_btn.place(x=5, y=5, width=40, height=40)
@@ -114,9 +105,8 @@ def open_admin_dashboard_group1(admin_data):
             date_entry = tk.Entry(filter_frame, textvariable=date_var, font=("Arial", 10), width=12)
             date_entry.pack(side="left", padx=(0, 10))
 
-        # Pagination variables
         images_per_page = 10
-        current_page = [0]  # list so it is mutable in nested functions
+        current_page = [0]
         filtered_images = []
 
         def apply_filters(*args):
@@ -134,6 +124,32 @@ def open_admin_dashboard_group1(admin_data):
             current_page[0] = 0
             display_images_page()
 
+        def download_all_images():
+            if not filtered_images:
+                messagebox.showinfo("No Images", "No filtered images to download.")
+                return
+
+            folder = filedialog.askdirectory(title="Select Download Folder")
+            if not folder:
+                return
+
+            success, failed = 0, 0
+            for img in filtered_images:
+                try:
+                    url = img.get("image_url")
+                    fname = img.get("filename", "image.jpg")
+                    response = requests.get(url, timeout=10)
+                    if response.status_code == 200:
+                        with open(f"{folder}/{fname}", "wb") as f:
+                            f.write(response.content)
+                        success += 1
+                    else:
+                        failed += 1
+                except:
+                    failed += 1
+
+            messagebox.showinfo("Download Complete", f"Downloaded: {success}, Failed: {failed}")
+
         def display_images_page():
             for widget in scroll_frame.winfo_children():
                 if widget != filter_frame:
@@ -147,37 +163,73 @@ def open_admin_dashboard_group1(admin_data):
             if not page_images:
                 tk.Label(scroll_frame, text="No images found.", font=("Arial", 12), fg="#c0392b", bg="#ecf0f1").pack(pady=20)
                 return
+            def view_full_image(img_data):
+                top = tk.Toplevel(admin)
+                top.title(img_data.get("filename", "Image"))
+                top.geometry("800x600")  # or adjust based on image size
+                top.configure(bg="white")
 
-            for img in page_images:
-                frame = tk.Frame(scroll_frame, bg="white", relief="raised", bd=2)
-                frame.pack(padx=10, pady=10, fill="x")
-                img_label = tk.Label(frame, bg="white")
                 try:
-                    response = requests.get(img["image_url"], timeout=10)
+                    response = requests.get(img_data["image_url"], timeout=10)
+                    image_data = BytesIO(response.content)
+                    full_img = Image.open(image_data).convert("RGB")
+
+                    full_photo = ImageTk.PhotoImage(full_img, master=top)
+                    img_label_full = tk.Label(top, image=full_photo, bg="white")
+                    img_label_full.image = full_photo  # Keep reference
+                    img_label_full.pack(expand=True, fill="both")
+                except Exception as e:
+                    tk.Label(top, text=f"Failed to load image: {e}", bg="white", fg="red").pack()
+
+
+
+            def load_image_async(img_data, img_label):
+                try:
+                    url = img_data["image_url"]
+                    print(f"Loading image from: {url}")
+                    response = requests.get(url, timeout=10)
+                    print("Status Code:", response.status_code)
+                    print("Content-Type:", response.headers.get('Content-Type'))
+
                     if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
                         image_data = BytesIO(response.content)
                         pil_img = Image.open(image_data).convert("RGB")
                         pil_img.thumbnail((180, 180))
                         photo = ImageTk.PhotoImage(pil_img, master=admin)
-                        img_label.config(image=photo)
-                        img_label.image = photo
-                        image_refs.append(photo)
+
+                        def update_ui():
+                            img_label.config(image=photo, text="")  # remove text
+                            img_label.image = photo
+                            image_refs.append(photo)  # Keep reference
+                            img_label.bind("<Button-1>", lambda e, data=img_data: view_full_image(data))
+                        admin.after(0, update_ui)
                     else:
-                        img_label.config(text="❌ Failed to load image", fg="red")
-                except Exception:
-                    img_label.config(text="❌ Failed to load image", fg="red")
+                        admin.after(0, lambda: img_label.config(text="❌ Not an image", fg="red"))
+                except Exception as e:
+                    print(f"Image load failed: {e}")
+                    admin.after(0, lambda: img_label.config(text="❌ Failed to load image", fg="red"))
+
+            # Inside your loop
+            for img in page_images:
+                frame = tk.Frame(scroll_frame, bg="white", relief="raised", bd=2)
+                frame.pack(padx=10, pady=10, fill="x")
+                img_label = tk.Label(frame, bg="white", text="Loading...", font=("Arial", 9), width=24, height=10)
                 img_label.pack(side="left", padx=10)
+
+                # ✅ FIXED: Pass img_label to thread
+                Thread(target=load_image_async, args=(img, img_label), daemon=True).start()
 
                 info_frame = tk.Frame(frame, bg="white")
                 info_frame.pack(side="left", padx=10, fill="x", expand=True)
                 for label, val in [
                     ("File", img.get("filename", "")),
                     ("Branch", img.get("branch", "")),
-                    ("Timestamp", img.get("timestamp", "")),
+                    ("Uploaded By", img.get("uploaded_by", "")),
                     ("Date of Transaction", img.get("date", "")),
                     ("Transaction type", img.get("transaction_type", ""))
                 ]:
                     tk.Label(info_frame, text=f"📁 {label}: {val}", justify="left", font=("Arial", 10), bg="#fff").pack(anchor="w")
+
 
                 def download_image(url=img["image_url"], fname=img.get("filename", "download")):
                     try:
@@ -194,26 +246,33 @@ def open_admin_dashboard_group1(admin_data):
                 def delete_image(doc_data=img, cont=frame):
                     try:
                         db.collection("Uploaded_Images").document(doc_data["doc_id"]).delete()
-                        cont.destroy()
-                        messagebox.showinfo("Delete", f"Deleted {doc_data.get('filename')}")
+                        filename = doc_data.get("filename", "")
+                        date = doc_data.get("date", "")
+                        branch_folder = doc_data.get("branch", "Unknown_Branch")
+                        storage_path = doc_data.get("storage_path", f"{branch_folder}/{date}/{filename}")
+                        blob = bucket.blob(storage_path)
+                        blob.delete()
+
                         if branch in images_by_branch:
                             images_by_branch[branch] = [i for i in images_by_branch[branch] if i["doc_id"] != doc_data["doc_id"]]
-                            apply_filters()
+                        if doc_data in filtered_images:
+                            filtered_images.remove(doc_data)
+
+                        display_images_page()
+                        messagebox.showinfo("Delete", f"Deleted {filename}")
                     except Exception as err:
-                        messagebox.showerror("Delete Error", f"Could not delete {doc_data.get('filename')}: {err}")
+                        messagebox.showerror("Delete Error", f"Could not delete {filename}: {err}")
 
                 tk.Button(info_frame, text="Delete", font=("Arial", 9), bg="#c0392b", fg="white", command=delete_image).pack(side="left", padx=4, pady=4)
 
-            # Pagination buttons
             nav_frame = tk.Frame(scroll_frame, bg="#ecf0f1")
             nav_frame.pack(pady=5)
             tk.Button(nav_frame, text="⬅ Prev", state="normal" if current_page[0] > 0 else "disabled",
-                      command=lambda: go_page(-1)).pack(side="left", padx=5)
+                    command=lambda: go_page(-1)).pack(side="left", padx=5)
             tk.Label(nav_frame, text=f"Page {current_page[0]+1} of {max(1, (len(filtered_images)-1)//images_per_page+1)}",
-                     bg="#ecf0f1", font=("Arial", 10)).pack(side="left")
+                    bg="#ecf0f1", font=("Arial", 10)).pack(side="left")
             tk.Button(nav_frame, text="Next ➡", state="normal" if end < len(filtered_images) else "disabled",
-                      command=lambda: go_page(1)).pack(side="left", padx=5)
-
+                    command=lambda: go_page(1)).pack(side="left", padx=5)
         def go_page(direction):
             current_page[0] += direction
             display_images_page()
@@ -222,10 +281,9 @@ def open_admin_dashboard_group1(admin_data):
             date_picker.bind("<<DateEntrySelected>>", apply_filters)
         trans_type_var.trace_add('write', lambda *a: apply_filters())
 
-        filter_btn = tk.Button(filter_frame, text="Apply Filters", font=("Arial", 10), bg="#2980b9", fg="white", command=apply_filters)
-        filter_btn.pack(side="left", padx=(0, 2))
+        tk.Button(filter_frame, text="Apply Filters", font=("Arial", 10), bg="#2980b9", fg="white", command=apply_filters).pack(side="left", padx=(0, 2))
+        tk.Button(filter_frame, text="Download All", font=("Arial", 10), bg="#8e44ad", fg="white", command=download_all_images).pack(side="left", padx=2)
 
-        # Initial load
         filtered_images.clear()
         filtered_images.extend(all_images)
         display_images_page()
@@ -237,6 +295,8 @@ def open_admin_dashboard_group1(admin_data):
     branches_frame = tk.Frame(sidebar, bg="#2c3e50")
     search_frame = tk.Frame(sidebar, bg="#2c3e50")
     search_var = tk.StringVar()
+    
+    
 
     def show_branch_buttons(filtered=None):
         for widget in branches_frame.winfo_children():
@@ -279,6 +339,6 @@ def open_admin_dashboard_group1(admin_data):
             messagebox.showerror("Error", f"Could not open login: {err}")
 
     tk.Button(sidebar, text="Logout", font=("Arial", 11), bg="#c0392b", fg="white", command=logout, width=18).pack(pady=5)
-    tk.Label(sidebar, text="Developed by Paolo Somido", font=("Arial", 9), fg="lightgray", bg="#2c3e50").pack(side="bottom", pady=10)
+    tk.Label(sidebar, text="Developed by: Paolo Somido", font=("Arial", 9), fg="lightgray", bg="#2c3e50").pack(side="bottom", pady=10)
 
     admin.mainloop()
