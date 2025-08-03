@@ -1,24 +1,52 @@
-print("[login_gui.py] Starting login GUI...")
-
 import tkinter as tk
 from tkinter import messagebox
+import os
 
 try:
     from auth import login_user
     from dashboard import open_dashboard
-    from firebase_config import db  # Firebase Firestore instance
+    from firebase_config import db  # Firestore instance
 except Exception as import_err:
     print(f"[login_gui.py] Import error: {import_err}")
+
+CREDENTIALS_FILE = "saved_credentials.txt"
+
+def save_credentials(username, password):
+    try:
+        with open(CREDENTIALS_FILE, "w") as f:
+            f.write(f"{username}\n{password}")
+    except Exception as e:
+        print(f"[login_gui.py] Failed to save credentials: {e}")
+
+def load_credentials():
+    if os.path.exists(CREDENTIALS_FILE):
+        try:
+            with open(CREDENTIALS_FILE, "r") as f:
+                lines = f.readlines()
+                if len(lines) >= 2:
+                    return lines[0].strip(), lines[1].strip()
+        except Exception as e:
+            print(f"[login_gui.py] Failed to load credentials: {e}")
+    return "", ""
 
 def check_admin_login(username, password):
     try:
         admins = db.collection("Admin").where("username", "==", username).where("password", "==", password).stream()
         for admin in admins:
-            admin_data = admin.to_dict()
-            return admin_data  # Return full document if found
+            return admin.to_dict()
         return None
     except Exception as e:
         print(f"[login_gui.py] Error checking admin login: {e}")
+        return None
+
+def check_user_login(username, password):
+    try:
+        users = db.collection("Users_db").where("username", "==", username).where("password", "==", password).stream()
+        for user in users:
+            return user.to_dict()
+        return None
+    except Exception as e:
+        print(f"[login_gui.py] Error checking user login: {e}")
         return None
 
 def main():
@@ -41,6 +69,17 @@ def main():
     entry_password = tk.Entry(form_frame, show="*", width=25, font=("Arial", 10))
     entry_password.grid(row=1, column=1, padx=10, pady=10)
 
+    remember_var = tk.BooleanVar()
+    remember_check = tk.Checkbutton(root, text="Remember Me", variable=remember_var, font=("Arial", 9))
+    remember_check.pack()
+
+    # Load saved credentials
+    saved_user, saved_pass = load_credentials()
+    entry_username.insert(0, saved_user)
+    entry_password.insert(0, saved_pass)
+    if saved_user and saved_pass:
+        remember_var.set(True)
+
     def on_login():
         global next_screen, next_user_data
         username = entry_username.get().strip()
@@ -50,7 +89,13 @@ def main():
             messagebox.showwarning("Missing Info", "Please enter both username and password.")
             return
 
-        # Check if it's an admin login first
+        if remember_var.get():
+            save_credentials(username, password)
+        else:
+            if os.path.exists(CREDENTIALS_FILE):
+                os.remove(CREDENTIALS_FILE)
+
+        # 1. Try Admin login
         admin_data = check_admin_login(username, password)
         if admin_data:
             group = admin_data.get('group', 'Unknown Group')
@@ -60,21 +105,17 @@ def main():
             next_user_data = admin_data
             return
 
-        # Else, check normal user login
-        try:
-            user_data = login_user(username, password)
-            if user_data:
-                messagebox.showinfo("Login Success", f"Welcome {user_data['branch']}!")
-                root.destroy()
-                next_screen = 'dashboard'
-                next_user_data = user_data
-            else:
-                messagebox.showerror("Login Failed", "Invalid credentials.")
-        except Exception as login_err:
-            import traceback
-            tb = traceback.format_exc()
-            print(f"[login_gui.py] Error during login: {login_err}\n{tb}")
-            messagebox.showerror("Login Error", f"Error: {login_err}\n\n{tb}")
+        # 2. Try Branch user login
+        user_data = check_user_login(username, password)
+        if user_data:
+            messagebox.showinfo("Login Success", f"Welcome {user_data.get('branch', 'User')}!")
+            root.destroy()
+            next_screen = 'dashboard'
+            next_user_data = user_data
+            return
+
+        # 3. If no match
+        messagebox.showerror("Login Failed", "Invalid credentials.")
 
     tk.Button(root, text="Login", font=("Arial", 10, "bold"), width=20, command=on_login).pack(pady=20)
 
@@ -84,7 +125,7 @@ def main():
     next_user_data = None
     root.mainloop()
 
-    # Handle dashboard routing after login
+    # Route based on user type
     if next_screen == 'admin':
         try:
             group = next_user_data.get('group', '').lower()
@@ -98,14 +139,13 @@ def main():
                 from admin_dashboard import open_admin_dashboard_group3
                 open_admin_dashboard_group3(next_user_data)
             else:
-                from admin_dashboard import open_admin_dashboard  # fallback
+                from admin_dashboard import open_admin_dashboard
                 open_admin_dashboard(next_user_data)
         except Exception as admin_err:
             print(f"[login_gui.py] Error opening admin dashboard: {admin_err}")
             messagebox.showerror("Admin Dashboard Error", f"Could not open admin dashboard: {admin_err}")
 
     elif next_screen == 'dashboard' and next_user_data:
-        from dashboard import open_dashboard
         open_dashboard(next_user_data)
 
 if __name__ == "__main__":

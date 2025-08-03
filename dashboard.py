@@ -4,6 +4,7 @@ from tkcalendar import DateEntry
 import os
 import time
 import datetime
+import tempfile
 from firebase_config import storage, db
 from firebase_admin import firestore
 from PIL import Image, ImageTk  # For viewing image
@@ -26,7 +27,7 @@ def open_dashboard(user_data):
     corporation = user_data.get("corporations", "Unknown Corporation")
 
     def upload_images():
-        files = filedialog.askopenfilenames(filetypes=[("Images", "*.png;*.jpg;*.jpeg")])
+        files = filedialog.askopenfilenames(filetypes=[("Image Files", "*.bmp;*.dib;*.jpeg;*.jpg;*.jpe;*.jfif;*.png;*.webp;*.pbm;*.pgm;*.ppm;*.pnm;*.tiff;*.tif;*.ras;*.sgi;*.tga")])
         if not files:
             return
 
@@ -188,7 +189,7 @@ def open_dashboard(user_data):
             elif key % 256 == 32:
                 timestamp = int(time.time())
                 default_name = f"captured_{timestamp}.jpg"
-                temp_path = os.path.join(os.getcwd(), default_name)
+                temp_path = os.path.join(os.path.expanduser("~"), "Documents", default_name)
                 cv2.imwrite(temp_path, frame)
 
                 cap.release()
@@ -271,9 +272,10 @@ def open_dashboard(user_data):
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
+    VERSION = "v1.0.7"
 
     dash = tk.Tk()
-    dash.title(f"Dashboard - {branch}")
+    dash.title(f"Dashboard - {branch} ({VERSION})")
     dash.geometry("700x550")
     dash.configure(bg="#ecf0f1")
     dash.resizable(False, False)
@@ -293,7 +295,7 @@ def open_dashboard(user_data):
     tk.Label(card, text="Upload Images", font=("Poppins", 15, "bold"), bg="#ffffff", fg="#2f3640").pack(pady=(20, 8))
 
     tk.Label(card, text="Transaction Type:", font=("Poppins", 11), bg="#ffffff", anchor="w").pack(pady=(5, 0), padx=30, fill="x")
-    transaction_types = ["Palawan Payout", "Palawan Sendout", "Money Changer", "KYC Form Records",
+    transaction_types = ["Palawan Payout", "Palawan Sendout", "Money Changer Buy", "Money Changer Sell", "Cars & Motors", "Auction Sales", "KYC Form Records",
                          "RIA In", "RIA Out",
                          "Gcash In", "Gcash Out", "i2i In", "i2i Out", "Palawan Pay In", "Palawan Pay Out",
                          "Jewelry New", "Jewelry Renew", "Jewelry Redeem", "Storage New", "Storage Renew",
@@ -330,5 +332,7 @@ def open_dashboard(user_data):
     tk.Button(card, text="Logout", font=("Poppins", 11, "bold"), bg="#d63031", fg="#ffffff",
               activebackground="#e17055", activeforeground="#ffffff", width=30, height=1,
               command=logout, bd=0, cursor="hand2").pack(pady=(5, 10))
-
+    footer = tk.Label(dash, text="Developed by Paolo Somido", font=("Poppins", 9), bg="#ecf0f1", fg="#636e72")
+    footer.pack(side="bottom", pady=(0, 5))
+    
     dash.mainloop()

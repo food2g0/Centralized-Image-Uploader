@@ -1,20 +1,27 @@
 import urllib.request
 import requests
-import zipfile
 import os
-import shutil
 import tempfile
+import subprocess
 from tkinter import messagebox, Tk
 
-VERSION_URL = "https://firebasestorage.googleapis.com/v0/b/records-management-faffa.firebasestorage.app/o/version.txt?alt=media&token=eea72d84-6649-42ba-9ccb-0340e8ad5aeb"
-UPDATE_ZIP_URL = "https://firebasestorage.googleapis.com/v0/b/records-management-faffa.firebasestorage.app/o/update.zip?alt=media&token=cdd772a1-e28c-4fc7-b1e6-bad2427bda53"
+# 🔁 Use GitHub version and installer links
+VERSION_URL = "https://raw.githubusercontent.com/food2g0/Centralized-Image-Uploader/main/version.txt?cachebuster=1"
+INSTALLER_URL = "https://github.com/food2g0/Centralized-Image-Uploader/releases/download/V.1.0.1/installer.exe"
+
+APP_VERSION = "1.0.7"  
 
 def get_current_version():
+    version_file = "version.txt"
+    if not os.path.exists(version_file):
+        with open(version_file, "w") as f:
+            f.write(APP_VERSION)
+        return APP_VERSION
     try:
-        with open("version.txt") as f:
+        with open(version_file) as f:
             return f.read().strip()
     except:
-        return "0.0.0"
+        return APP_VERSION
 
 def check_for_updates():
     try:
@@ -33,58 +40,40 @@ def check_for_updates():
         print("❌ Could not check for updates:", e)
     return None
 
-def download_and_apply_update():
+def download_and_run_installer():
     try:
-        print("⬇️ Downloading update.zip from Firebase...")
-        response = requests.get(UPDATE_ZIP_URL, stream=True)
-        with open("update.zip", "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-        print("✅ Downloaded update.zip")
+        print("⬇️ Downloading installer.exe from GitHub release...")
+        with requests.get(INSTALLER_URL, stream=True) as response:
+            response.raise_for_status()
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".exe") as tmp_file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    tmp_file.write(chunk)
+                installer_path = tmp_file.name
 
-        print("📦 Extracting files...")
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            with zipfile.ZipFile("update.zip", "r") as zip_ref:
-                zip_ref.extractall(tmpdirname)
-
-            # Copy files from temp to current dir
-            for item in os.listdir(tmpdirname):
-                src = os.path.join(tmpdirname, item)
-                dst = os.path.join(".", item)
-                if os.path.isdir(src):
-                    if os.path.exists(dst):
-                        shutil.rmtree(dst)
-                    shutil.copytree(src, dst)
-                else:
-                    shutil.copy2(src, dst)
-
-        os.remove("update.zip")
-        print("✅ Update applied successfully!")
+        print(f"🚀 Running installer: {installer_path}")
+        subprocess.Popen(installer_path, shell=True)  # Launch installer
         return True
     except Exception as e:
-        print("❌ Update failed:", e)
+        print("❌ Failed to download or run installer:", e)
         return False
+
 
 def run_updater():
     latest = check_for_updates()
     if latest:
         root = Tk()
         root.withdraw()
-        answer = messagebox.askyesno("Update Available", f"A new version ({latest}) is available.\nDo you want to update now?")
+        answer = messagebox.askyesno("Update Available", f"A new version ({latest}) is available.\nDo you want to install it now?")
         if answer:
-            if download_and_apply_update():
-                messagebox.showinfo("Update Complete", "App has been updated.\nPlease restart the application.")
+            if download_and_run_installer():
+                messagebox.showinfo("Installer Launched", "Installer is running.\nPlease follow the prompts to update.")
                 root.destroy()
-                import sys
-                sys.exit()
+                os._exit(0)  
             else:
-                messagebox.showerror("Update Failed", "Something went wrong during the update.")
+                messagebox.showerror("Update Failed", "Failed to download or launch the installer.")
                 root.destroy()
-                import sys
-                sys.exit()
+                os._exit(1)  
         root.destroy()
-
 # 🟢 Run updater first
 run_updater()
 
