@@ -9,6 +9,7 @@ from firebase_config import storage, db
 from firebase_admin import firestore
 from PIL import Image, ImageTk  # For viewing image
 
+
 def open_dashboard(user_data):
     def logout():
         dash.destroy()
@@ -27,11 +28,12 @@ def open_dashboard(user_data):
     corporation = user_data.get("corporations", "Unknown Corporation")
 
     def upload_images():
-        files = filedialog.askopenfilenames(filetypes=[("Image Files", "*.bmp;*.dib;*.jpeg;*.jpg;*.jpe;*.jfif;*.png;*.webp;*.pbm;*.pgm;*.ppm;*.pnm;*.tiff;*.tif;*.ras;*.sgi;*.tga")])
+        files = filedialog.askopenfilenames(filetypes=[("Image Files",
+                                                        "*.bmp;*.dib;*.jpeg;*.jpg;*.jpe;*.jfif;*.png;*.webp;*.pbm;*.pgm;*.ppm;*.pnm;*.tiff;*.tif;*.ras;*.sgi;*.tga")])
         if not files:
             return
 
-        max_size_bytes = 5 * 1024 * 1024  # 5MB
+        max_size_bytes = 50 * 1024 * 1024
         oversized_files = []
         valid_files = []
 
@@ -42,11 +44,13 @@ def open_dashboard(user_data):
                 oversized_files.append(os.path.basename(file_path))
 
         if not valid_files:
-            messagebox.showwarning("All Files Too Large", "All selected files exceed the 5MB size limit.")
+            messagebox.showwarning("All Files Too Large", "All selected files exceed the 50MB size limit.")
             return
 
         if oversized_files:
-            messagebox.showwarning("Some Files Skipped", f"The following files were skipped for exceeding 5MB:\n\n" + "\n".join(oversized_files))
+            messagebox.showwarning("Some Files Skipped",
+                                   f"The following files were skipped for exceeding 50MB:\n\n" + "\n".join(
+                                       oversized_files))
 
         def confirm_upload():
             confirmed_transaction = transaction_var.get()
@@ -68,8 +72,34 @@ def open_dashboard(user_data):
                     branch_folder = branch if branch else "Unknown_Branch"
                     storage_path = f"{branch_folder}/{confirmed_date}_{timestamp}_{filename}"
 
-                    storage.child(storage_path).put(file_path)
-                    url = storage.child(storage_path).get_url(None)
+                    # ✅ NEW: Try Admin SDK upload method first
+                    from firebase_config import upload_file_with_admin_sdk, get_download_url_with_fallback, \
+                        test_url_accessibility, fix_content_type_after_pyrebase_upload
+
+                    try:
+                        print(f"🔄 Trying Admin SDK upload for {filename}")
+                        url = upload_file_with_admin_sdk(file_path, storage_path)
+                        print(f"✅ Admin SDK upload successful for {filename}")
+
+                    except Exception as admin_error:
+                        print(f"⚠️ Admin SDK upload failed: {admin_error}")
+                        print(f"🔄 Falling back to Pyrebase upload for {filename}")
+
+                        # Fallback to Pyrebase method
+                        upload_result = storage.child(storage_path).put(file_path)
+                        print(f"✅ Pyrebase upload completed for {filename}")
+
+                        # Fix content type after Pyrebase upload
+                        fix_content_type_after_pyrebase_upload(storage_path, filename)
+
+                        print(f"🔄 Generating download URL for {filename}")
+                        url = get_download_url_with_fallback(storage_path)
+
+                    # Test if the URL actually works
+                    if test_url_accessibility(url):
+                        print(f"✅ Upload successful - URL verified: {filename}")
+                    else:
+                        print(f"⚠️ Upload successful but URL may not be accessible: {filename}")
 
                     doc_data = {
                         "branch": branch,
@@ -88,10 +118,12 @@ def open_dashboard(user_data):
                     uploaded += 1
                     progress_label.config(text=f"Uploading {uploaded}/{len(valid_files)} images...")
                     dash.update_idletasks()
-                    print(f"✅ Uploaded {filename}")
+                    print(f"✅ Database record created for {filename}")
+                    print(f"✅ Final working URL: {url}")
+
                 except Exception as e:
-                    print("🔥 Upload error:", e)
-                    messagebox.showerror("Upload Failed", f"Error uploading {filename}")
+                    print(f"🔥 Upload error for {filename}: {e}")
+                    messagebox.showerror("Upload Failed", f"Error uploading {filename}: {str(e)}")
 
             progress_label.config(text="Upload complete!")
             messagebox.showinfo("Upload Complete", "Images uploaded successfully!")
@@ -115,15 +147,17 @@ def open_dashboard(user_data):
         confirm_win.geometry("600x450")
         confirm_win.configure(bg="#f5f6fa")
         confirm_win.grab_set()
-        confirm_win.geometry(f"+{dash.winfo_rootx()+100}+{dash.winfo_rooty()+80}")
+        confirm_win.geometry(f"+{dash.winfo_rootx() + 100}+{dash.winfo_rooty() + 80}")
 
-        tk.Label(confirm_win, text="📋 Confirm Images to Upload", font=("Poppins", 13, "bold"), bg="#f5f6fa", fg="#2f3640").pack(pady=(10, 5))
+        tk.Label(confirm_win, text="📋 Confirm Images to Upload", font=("Poppins", 13, "bold"), bg="#f5f6fa",
+                 fg="#2f3640").pack(pady=(10, 5))
 
         # Show selected transaction type and date
         info_frame = tk.Frame(confirm_win, bg="#f5f6fa")
         info_frame.pack(pady=(0, 10))
 
-        tk.Label(info_frame, text=f"📝 Transaction Type: {transaction_var.get()}", font=("Poppins", 10), bg="#f5f6fa").pack(anchor="w")
+        tk.Label(info_frame, text=f"📝 Transaction Type: {transaction_var.get()}", font=("Poppins", 10),
+                 bg="#f5f6fa").pack(anchor="w")
         tk.Label(info_frame, text=f"📅 Date: {date_var.get()}", font=("Poppins", 10), bg="#f5f6fa").pack(anchor="w")
 
         table_frame = tk.Frame(confirm_win)
@@ -217,7 +251,7 @@ def open_dashboard(user_data):
                 prompt.title("Edit Image Filename")
                 prompt.geometry("350x150")
                 prompt.grab_set()
-                prompt.geometry(f"+{dash.winfo_rootx()+100}+{dash.winfo_rooty()+80}")
+                prompt.geometry(f"+{dash.winfo_rootx() + 100}+{dash.winfo_rooty() + 80}")
 
                 tk.Label(prompt, text="Enter image filename:", font=("Poppins", 11)).pack(pady=(15, 5))
                 name_entry = tk.Entry(prompt, font=("Poppins", 10))
@@ -247,8 +281,34 @@ def open_dashboard(user_data):
             branch_folder = branch if branch else "Unknown_Branch"
             storage_path = f"{branch_folder}/{confirmed_date}_{timestamp}_{filename}"
 
-            storage.child(storage_path).put(temp_path)
-            url = storage.child(storage_path).get_url(None)
+            # ✅ NEW: Try Admin SDK upload method first
+            from firebase_config import upload_file_with_admin_sdk, get_download_url_with_fallback, \
+                test_url_accessibility, fix_content_type_after_pyrebase_upload
+
+            try:
+                print(f"🔄 Trying Admin SDK upload for camera image {filename}")
+                url = upload_file_with_admin_sdk(temp_path, storage_path)
+                print(f"✅ Admin SDK camera upload successful")
+
+            except Exception as admin_error:
+                print(f"⚠️ Admin SDK camera upload failed: {admin_error}")
+                print(f"🔄 Falling back to Pyrebase upload for camera image {filename}")
+
+                # Fallback to Pyrebase method
+                upload_result = storage.child(storage_path).put(temp_path)
+                print(f"✅ Pyrebase camera upload completed for {filename}")
+
+                # Fix content type after Pyrebase upload
+                fix_content_type_after_pyrebase_upload(storage_path, filename)
+
+                print(f"🔄 Generating download URL for camera image {filename}")
+                url = get_download_url_with_fallback(storage_path)
+
+            # Test if the URL actually works
+            if test_url_accessibility(url):
+                print(f"✅ Camera upload successful - URL verified")
+            else:
+                print(f"⚠️ Camera upload successful but URL may not be accessible")
 
             doc_data = {
                 "branch": branch,
@@ -266,13 +326,17 @@ def open_dashboard(user_data):
 
             progress_label.config(text="Camera image uploaded successfully!")
             messagebox.showinfo("Success", "Captured image uploaded successfully.")
+            print(f"✅ Camera image database record created")
+            print(f"✅ Final working URL: {url}")
+
         except Exception as e:
-            print("🔥 Upload error:", e)
-            messagebox.showerror("Upload Failed", f"Error uploading captured image")
+            print(f"🔥 Camera upload error: {e}")
+            messagebox.showerror("Upload Failed", f"Error uploading captured image: {str(e)}")
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-    VERSION = "v1.0.7"
+
+    VERSION = "v1.0.9"  # Updated version
 
     dash = tk.Tk()
     dash.title(f"Dashboard - {branch} ({VERSION})")
@@ -282,38 +346,47 @@ def open_dashboard(user_data):
 
     style = ttk.Style()
     style.theme_use("clam")
-    style.configure("TCombobox", fieldbackground="#ffffff", background="#ffffff", foreground="#2d3436", font=("Poppins", 10))
+    style.configure("TCombobox", fieldbackground="#ffffff", background="#ffffff", foreground="#2d3436",
+                    font=("Poppins", 10))
 
     header = tk.Frame(dash, bg="#2f3640", height=60)
     header.pack(fill="x")
-    tk.Label(header, text="📁  Record Management System", font=("Poppins", 17, "bold"), bg="#2f3640", fg="#ffffff").pack(side="left", padx=20, pady=10)
-    tk.Label(header, text=f"Branch: {branch}", font=("Poppins", 12), bg="#2f3640", fg="#dcdde1").pack(side="right", padx=20)
+    tk.Label(header, text="📁  Record Management System", font=("Poppins", 17, "bold"), bg="#2f3640", fg="#ffffff").pack(
+        side="left", padx=20, pady=10)
+    tk.Label(header, text=f"Branch: {branch}", font=("Poppins", 12), bg="#2f3640", fg="#dcdde1").pack(side="right",
+                                                                                                      padx=20)
 
     card = tk.Frame(dash, bg="#ffffff", bd=0, relief="flat")
     card.place(relx=0.5, rely=0.55, anchor="center", width=420, height=480)
 
     tk.Label(card, text="Upload Images", font=("Poppins", 15, "bold"), bg="#ffffff", fg="#2f3640").pack(pady=(20, 8))
 
-    tk.Label(card, text="Transaction Type:", font=("Poppins", 11), bg="#ffffff", anchor="w").pack(pady=(5, 0), padx=30, fill="x")
-    transaction_types = ["Palawan Payout", "Palawan Sendout", "Money Changer Buy", "Money Changer Sell", "Cars & Motors", "Auction Sales", "KYC Form Records",
+    tk.Label(card, text="Transaction Type:", font=("Poppins", 11), bg="#ffffff", anchor="w").pack(pady=(5, 0), padx=30,
+                                                                                                  fill="x")
+    transaction_types = ["Palawan Payout", "Palawan Sendout", "Money Changer Buy", "Money Changer Sell",
+                         "Cars & Motors", "Auction Sales", "KYC Individual Records", "KYC Corporate Records",
                          "RIA In", "RIA Out",
                          "Gcash In", "Gcash Out", "i2i In", "i2i Out", "Palawan Pay In", "Palawan Pay Out",
                          "Jewelry New", "Jewelry Renew", "Jewelry Redeem", "Storage New", "Storage Renew",
-                         "Storage Redeem",
+                         "Storage Redeem","Cars & Motors New", "Cars & Motors Renew", "Cars & Motors Redeem"
                          ]
     transaction_var = tk.StringVar(value=transaction_types[0])
-    transaction_dropdown = ttk.Combobox(card, textvariable=transaction_var, values=transaction_types, state="readonly", font=("Poppins", 10))
+    transaction_dropdown = ttk.Combobox(card, textvariable=transaction_var, values=transaction_types, state="readonly",
+                                        font=("Poppins", 10))
     transaction_dropdown.current(0)
     transaction_dropdown.pack(pady=5, padx=30, fill="x")
 
-    tk.Label(card, text="Select Date:", font=("Poppins", 11), bg="#ffffff", anchor="w").pack(pady=(10, 0), padx=30, fill="x")
+    tk.Label(card, text="Select Date:", font=("Poppins", 11), bg="#ffffff", anchor="w").pack(pady=(10, 0), padx=30,
+                                                                                             fill="x")
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     date_var = tk.StringVar(value=today_str)
-    date_picker = DateEntry(card, textvariable=date_var, date_pattern="yyyy-mm-dd", font=("Poppins", 10))
+    date_picker = DateEntry(card, textvariable=date_var, date_pattern="yyyy-mm-dd", font=("Poppins", 10),
+                            state="readonly")
     date_picker.set_date(datetime.date.today())
     date_picker.pack(pady=5, padx=30, fill="x")
 
-    tk.Label(card, text="Uploaded by:", font=("Poppins", 11), bg="#ffffff", anchor="w").pack(pady=(10, 0), padx=30, fill="x")
+    tk.Label(card, text="Uploaded by:", font=("Poppins", 11), bg="#ffffff", anchor="w").pack(pady=(10, 0), padx=30,
+                                                                                             fill="x")
     name_var = tk.StringVar()
     name_entry = tk.Entry(card, textvariable=name_var, font=("Poppins", 10))
     name_entry.pack(pady=5, padx=30, fill="x")
@@ -334,5 +407,5 @@ def open_dashboard(user_data):
               command=logout, bd=0, cursor="hand2").pack(pady=(5, 10))
     footer = tk.Label(dash, text="Developed by Paolo Somido", font=("Poppins", 9), bg="#ecf0f1", fg="#636e72")
     footer.pack(side="bottom", pady=(0, 5))
-    
+
     dash.mainloop()
