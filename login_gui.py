@@ -49,6 +49,17 @@ def check_user_login(username, password):
         print(f"[login_gui.py] Error checking user login: {e}")
         return None
 
+def check_head_office_login(username, password):
+    """Check if user exists in Head_Office_USR collection"""
+    try:
+        head_office_users = db.collection("Head_Office_USR").where("username", "==", username).where("password", "==", password).stream()
+        for user in head_office_users:
+            return user.to_dict()
+        return None
+    except Exception as e:
+        print(f"[login_gui.py] Error checking head office login: {e}")
+        return None
+
 def main():
     global root
     root = tk.Tk()
@@ -105,7 +116,16 @@ def main():
             next_user_data = admin_data
             return
 
-        # 2. Try Branch user login
+        # 2. Try Head Office login
+        head_office_data = check_head_office_login(username, password)
+        if head_office_data:
+            messagebox.showinfo("Login Success", f"Welcome Head Office User!")
+            root.destroy()
+            next_screen = 'head_office'
+            next_user_data = head_office_data
+            return
+
+        # 3. Try Branch user login
         user_data = check_user_login(username, password)
         if user_data:
             messagebox.showinfo("Login Success", f"Welcome {user_data.get('branch', 'User')}!")
@@ -114,7 +134,7 @@ def main():
             next_user_data = user_data
             return
 
-        # 3. If no match
+        # 4. If no match
         messagebox.showerror("Login Failed", "Invalid credentials.")
 
     tk.Button(root, text="Login", font=("Arial", 10, "bold"), width=20, command=on_login).pack(pady=20)
@@ -144,6 +164,20 @@ def main():
         except Exception as admin_err:
             print(f"[login_gui.py] Error opening admin dashboard: {admin_err}")
             messagebox.showerror("Admin Dashboard Error", f"Could not open admin dashboard: {admin_err}")
+
+    elif next_screen == 'head_office':
+        try:
+            print(f"[login_gui.py] Attempting to open head office dashboard with user data: {next_user_data}")
+            # Import the main dashboard function that accepts user_data
+            from head_office_dashboard import open_head_office_dashboard
+            open_head_office_dashboard(next_user_data)
+        except ImportError as import_err:
+            print(f"[login_gui.py] Import error for head office dashboard: {import_err}")
+            messagebox.showerror("Import Error", "Could not import head_office_dashboard module. Please ensure the file exists.")
+        except Exception as head_office_err:
+            print(f"[login_gui.py] Error opening head office dashboard: {head_office_err}")
+            print(f"[login_gui.py] User data type: {type(next_user_data)}")
+            messagebox.showerror("Head Office Dashboard Error", f"Could not open head office dashboard: {head_office_err}")
 
     elif next_screen == 'dashboard' and next_user_data:
         open_dashboard(next_user_data)

@@ -1,38 +1,72 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from tkcalendar import DateEntry
 import os
 import time
 import datetime
 from threading import Thread
 from firebase_config import storage, db  # pyrebase storage, firebase_admin db
 from firebase_admin import firestore
+from Colors import COLORS
+from corporations import CORPORATIONS, DEPARTMENT_CONFIG
 
 # Allowed file types
-ALLOWED_EXTENSIONS = (".jpg", ".jpeg", ".png", ".pdf", ".docx")
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+ALLOWED_EXTENSIONS = ".pdf"
+MAX_FILE_SIZE = 100 * 1024 * 1024
 
-# Color scheme
-COLORS = {
-    'primary': '#2563eb',
-    'primary_hover': '#1d4ed8',
-    'secondary': '#64748b',
-    'success': '#059669',
-    'danger': '#dc2626',
-    'warning': '#d97706',
-    'light': '#f8fafc',
-    'white': '#ffffff',
-    'dark': '#1e293b',
-    'border': '#e2e8f0',
-    'text': '#334155',
-    'text_light': '#64748b'
-}
+
+class DepartmentTransactionManager:
+
+
+    @staticmethod
+    def get_departments():
+ 
+        return list(DEPARTMENT_CONFIG.keys())
+
+    @staticmethod
+    def get_transactions(department):
+
+        return DEPARTMENT_CONFIG.get(department, {}).get("transactions", [])
+
+    @staticmethod
+    def get_sub_categories(department, transaction):
+ 
+        dept_config = DEPARTMENT_CONFIG.get(department, {})
+        return dept_config.get("sub_categories", {}).get(transaction, [])
+
+    @staticmethod
+    def has_sub_categories(department, transaction):
+
+        return len(DepartmentTransactionManager.get_sub_categories(department, transaction)) > 0
+
+    @staticmethod
+    def get_department_icon(department):
+        
+        return DEPARTMENT_CONFIG.get(department, {}).get("icon", "📁")
+
+    @staticmethod
+    def validate_transaction(department, transaction, sub_category=None):
+       
+        valid_transactions = DepartmentTransactionManager.get_transactions(department)
+        if transaction not in valid_transactions:
+            return False
+
+        if sub_category:
+            valid_subs = DepartmentTransactionManager.get_sub_categories(department, transaction)
+            return sub_category in valid_subs
+
+        return True
+
+    @staticmethod
+    def get_corporations():
+       
+        return CORPORATIONS
+
 
 def create_modern_button(parent, text, command, bg_color, hover_color=None, width=None):
-    """Create a modern styled button with hover effects"""
+ 
     button = tk.Button(
-        parent, 
-        text=text, 
+        parent,
+        text=text,
         command=command,
         bg=bg_color,
         fg='white',
@@ -43,26 +77,28 @@ def create_modern_button(parent, text, command, bg_color, hover_color=None, widt
         pady=8,
         width=width
     )
-    
-    # Add hover effects
+
     if hover_color:
         def on_enter(e):
             button.config(bg=hover_color)
+
         def on_leave(e):
             button.config(bg=bg_color)
-        
+
         button.bind("<Enter>", on_enter)
         button.bind("<Leave>", on_leave)
-    
+
     return button
+
 
 def create_styled_frame(parent, bg_color=COLORS['white'], relief='flat', bd=1):
     """Create a styled frame with modern appearance"""
     frame = tk.Frame(parent, bg=bg_color, relief=relief, bd=bd)
     return frame
 
+
 def format_file_size(size_bytes):
-    """Format file size in human readable format"""
+
     if size_bytes < 1024:
         return f"{size_bytes} B"
     elif size_bytes < 1024 * 1024:
@@ -70,41 +106,44 @@ def format_file_size(size_bytes):
     else:
         return f"{size_bytes / (1024 * 1024):.2f} MB"
 
+
 def open_head_office_popup(parent_admin):
-    # Store selected files
+
+    dept_manager = DepartmentTransactionManager()
+
+
     selected_files = []
-    
+
     def add_files():
         file_paths = filedialog.askopenfilenames(
             title="Select Documents",
             filetypes=[
-                ("All Supported", "*.jpg;*.jpeg;*.png;*.pdf;*.docx"),
-                ("Images", "*.jpg;*.jpeg;*.png"),
-                ("Documents", "*.pdf;*.docx"),
-                ("All Files", "*.*")
+                ("All Supported", "*.pdf"),
+                ("Documents", "*.pdf;"),
+
             ]
         )
-        
+
         for file_path in file_paths:
             if file_path not in [f['path'] for f in selected_files]:
-                # Validate file
                 ext = os.path.splitext(file_path)[1].lower()
                 if ext not in ALLOWED_EXTENSIONS:
-                    messagebox.showwarning("Invalid File", f"File type {ext} not allowed for:\n{os.path.basename(file_path)}")
+                    messagebox.showwarning("Invalid File",
+                                           f"File type {ext} not allowed for:\n{os.path.basename(file_path)}")
                     continue
-                
+
                 file_size = os.path.getsize(file_path)
                 if file_size > MAX_FILE_SIZE:
                     messagebox.showwarning("File Too Large", f"File exceeds 50MB limit:\n{os.path.basename(file_path)}")
                     continue
-                
+
                 selected_files.append({
                     'path': file_path,
                     'name': os.path.basename(file_path),
                     'size': file_size,
                     'status': 'pending'
                 })
-        
+
         update_file_list()
 
     def remove_file(index):
@@ -117,15 +156,11 @@ def open_head_office_popup(parent_admin):
         update_file_list()
 
     def update_file_list():
-        # Clear existing file widgets
+
         for widget in file_list_frame.winfo_children():
             widget.destroy()
-        
+
         if not selected_files:
-            # Clear any existing canvas/scrollbar
-            for widget in file_list_frame.winfo_children():
-                widget.destroy()
-                
             no_files_label = tk.Label(
                 file_list_frame,
                 text="📂 No files selected\nClick 'Add Files' to select documents",
@@ -138,53 +173,49 @@ def open_head_office_popup(parent_admin):
             files_info_label.config(text="0 files selected")
             return
 
-        # Clear existing widgets
+
         for widget in file_list_frame.winfo_children():
             widget.destroy()
-        
-        # Create scrollable frame for file list with fixed height
+
         canvas = tk.Canvas(file_list_frame, bg=COLORS['light'], highlightthickness=0, height=180)
         scrollbar = ttk.Scrollbar(file_list_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = tk.Frame(canvas, bg=COLORS['light'])
-        
+
         scrollable_frame.bind(
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
-        
+
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-        
-        # Enable mouse wheel scrolling
+
         def on_mousewheel(event):
-            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
         canvas.bind("<MouseWheel>", on_mousewheel)
-        
-        # Add files to scrollable frame
+
+
         for i, file_info in enumerate(selected_files):
             file_frame = create_styled_frame(scrollable_frame, COLORS['white'], relief='solid', bd=1)
             file_frame.pack(fill='x', padx=2, pady=2)
-            
-            # File info section
+
             info_frame = create_styled_frame(file_frame, COLORS['white'])
             info_frame.pack(side='left', fill='both', expand=True, padx=8, pady=4)
-            
-            # File name and status
+
             status_color = COLORS['text'] if file_info['status'] == 'pending' else \
-                          COLORS['success'] if file_info['status'] == 'uploaded' else \
-                          COLORS['warning'] if file_info['status'] == 'uploading' else \
-                          COLORS['danger']
-            
+                COLORS['success'] if file_info['status'] == 'uploaded' else \
+                    COLORS['warning'] if file_info['status'] == 'uploading' else \
+                        COLORS['danger']
+
             status_icon = "📄" if file_info['status'] == 'pending' else \
-                         "✅" if file_info['status'] == 'uploaded' else \
-                         "⏳" if file_info['status'] == 'uploading' else \
-                         "❌"
-            
-            # Truncate long file names
+                "✅" if file_info['status'] == 'uploaded' else \
+                    "⏳" if file_info['status'] == 'uploading' else \
+                        "❌"
+
             display_name = file_info['name']
             if len(display_name) > 40:
                 display_name = display_name[:37] + "..."
-            
+
             name_label = tk.Label(
                 info_frame,
                 text=f"{status_icon} {display_name}",
@@ -194,7 +225,7 @@ def open_head_office_popup(parent_admin):
                 anchor='w'
             )
             name_label.pack(fill='x')
-            
+
             size_label = tk.Label(
                 info_frame,
                 text=f"{format_file_size(file_info['size'])} • {file_info['status'].title()}",
@@ -204,8 +235,7 @@ def open_head_office_popup(parent_admin):
                 anchor='w'
             )
             size_label.pack(fill='x')
-            
-            # Remove button (only for pending files)
+
             if file_info['status'] == 'pending':
                 remove_btn = tk.Button(
                     file_frame,
@@ -220,30 +250,104 @@ def open_head_office_popup(parent_admin):
                     height=1
                 )
                 remove_btn.pack(side='right', padx=4, pady=4)
-        
-        # Pack canvas and scrollbar
+
         canvas.pack(side="left", fill="both", expand=True)
-        if len(selected_files) > 6:  # Show scrollbar only when needed
+        if len(selected_files) > 6:
             scrollbar.pack(side="right", fill="y")
-        
-        # Update file count
+
         total_files = len(selected_files)
         total_size = sum(f['size'] for f in selected_files)
         files_info_label.config(
             text=f"{total_files} file{'s' if total_files != 1 else ''} selected | Total: {format_file_size(total_size)}"
         )
 
-    def validate_inputs():
-        """Validate all inputs before upload"""
-        errors = []
+    def on_department_change(event=None):
+        """Handle department selection change using the centralized manager"""
+        selected_dept = department_var.get()
+
+        transaction_type_var.set("")
+        sub_category_var.set("")
+
+
+        sub_category_section.pack_forget()
+
+
+        if selected_dept:
+            dept_icon = dept_manager.get_department_icon(selected_dept)
+            dept_label.config(text=f"{dept_icon} Department")
+
+      
+            transactions = dept_manager.get_transactions(selected_dept)
+            transaction_dropdown['values'] = transactions
+            if transactions:
+                trans_label.config(text=f"📋 {selected_dept.replace(' Department', '')} Transaction Type")
+            else:
+                trans_label.config(text="📋 Transaction Type")
+        else:
+            dept_label.config(text="🏢 Department")
+            trans_label.config(text="📋 Transaction Type")
+            transaction_dropdown['values'] = []
+
+    def on_transaction_change(event=None):
+        """Handle transaction type selection change"""
+        selected_dept = department_var.get()
+        selected_transaction = transaction_type_var.get()
+
         
+        sub_category_var.set("")
+
+        if selected_dept and selected_transaction:
+            
+            if dept_manager.has_sub_categories(selected_dept, selected_transaction):
+                
+                sub_categories = dept_manager.get_sub_categories(selected_dept, selected_transaction)
+                sub_category_dropdown['values'] = sub_categories
+
+                
+                sub_category_label.config(text=f"📚 {selected_transaction} Type")
+
+                
+                sub_category_section.pack(fill='x', pady=(0, 15), padx=5, after=trans_section)
+            else:
+                
+                sub_category_section.pack_forget()
+        else:
+            sub_category_section.pack_forget()
+
+    def validate_inputs():
+        """Enhanced validation using the department manager"""
+        errors = []
+
         if not selected_files:
             errors.append("Please select at least one file")
-        if not department_var.get():
+
+        selected_corp = corporation_var.get()
+        selected_dept = department_var.get()
+        selected_transaction = transaction_type_var.get()
+        selected_sub = sub_category_var.get()
+        uploaded_by = uploaded_by_var.get().strip()
+
+        if not selected_corp:
+            errors.append("Please select a corporation")
+        elif selected_corp not in dept_manager.get_corporations():
+            errors.append("Invalid corporation selected")
+
+        if not selected_dept:
             errors.append("Please select a department")
-        if not transaction_type_var.get():
+        elif not selected_transaction:
             errors.append("Please select a transaction type")
-            
+        elif not dept_manager.validate_transaction(selected_dept, selected_transaction):
+            errors.append(f"Invalid transaction type for {selected_dept}")
+        elif dept_manager.has_sub_categories(selected_dept, selected_transaction) and not selected_sub:
+            errors.append(f"Please select a {selected_transaction} type")
+        elif selected_sub and not dept_manager.validate_transaction(selected_dept, selected_transaction, selected_sub):
+            errors.append(f"Invalid sub-category for {selected_transaction}")
+
+        if not uploaded_by:
+            errors.append("Please enter who is uploading the documents")
+        elif len(uploaded_by) < 2:
+            errors.append("Uploaded by name must be at least 2 characters")
+
         return errors
 
     def upload_files():
@@ -253,97 +357,100 @@ def open_head_office_popup(parent_admin):
             messagebox.showerror("Validation Error", "\n".join(f"• {error}" for error in errors))
             return
 
+        corporation = corporation_var.get()
         department = department_var.get()
         transaction_type = transaction_type_var.get()
-        date_val = date_entry.get_date().strftime("%Y-%m-%d")
+        sub_category = sub_category_var.get()
+        uploaded_by = uploaded_by_var.get().strip()
+        current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+        # Combine transaction type with sub-category if applicable
+        final_transaction_type = f"{transaction_type} - {sub_category}" if sub_category else transaction_type
 
         def do_upload():
             try:
-                # Disable upload button during upload
                 upload_btn.config(state='disabled', text='Uploading...', bg=COLORS['secondary'])
                 clear_btn.config(state='disabled')
-                
+
                 total_files = len(selected_files)
                 uploaded_files = []
                 failed_files = []
-                
+
                 for i, file_info in enumerate(selected_files):
                     try:
-                        # Update status
                         file_info['status'] = 'uploading'
-                        progress = int((i / total_files) * 80)  # Reserve 20% for final steps
+                        progress = int((i / total_files) * 80)
                         progress_var.set(progress)
                         status_label.config(
-                            text=f"Uploading {file_info['name']} ({i+1}/{total_files})...", 
+                            text=f"Uploading {file_info['name']} ({i + 1}/{total_files})...",
                             fg=COLORS['primary']
                         )
                         popup.update_idletasks()
                         update_file_list()
-                        
-                        # Firebase path
+
                         timestamp = int(time.time())
-                        file_name = f"{date_val}_{timestamp}_{i}_{file_info['name']}"
+                        file_name = f"{current_date}_{timestamp}_{i}_{file_info['name']}"
                         storage_path = f"Head Office/{file_name}"
-                        
-                        # Upload to Firebase Storage
+
                         storage.child(storage_path).put(file_info['path'])
-                        
-                        # Get public URL
                         file_url = storage.child(storage_path).get_url(None)
-                        
-                        # Save to Firestore
+
                         doc_ref = db.collection("head_office_uploads").add({
+                            "corporation": corporation,
                             "department": department,
-                            "transaction_type": transaction_type,
-                            "date": date_val,
+                            "transaction_type": final_transaction_type,
+                            "uploaded_by": uploaded_by,
+                            "upload_date": current_date,
                             "file_name": file_info['name'],
                             "file_url": file_url,
                             "file_size": file_info['size'],
                             "upload_batch": timestamp,
                             "timestamp": firestore.SERVER_TIMESTAMP
                         })
-                        
+
                         file_info['status'] = 'uploaded'
                         uploaded_files.append(file_info['name'])
-                        
+
                     except Exception as e:
                         file_info['status'] = 'failed'
                         failed_files.append(f"{file_info['name']}: {str(e)}")
-                
-                # Final progress
+
                 progress_var.set(100)
                 update_file_list()
-                
-                # Show results
+
+                # Show results based on upload success
                 if uploaded_files and not failed_files:
                     status_label.config(
-                        text=f"✅ Successfully uploaded {len(uploaded_files)} file{'s' if len(uploaded_files) != 1 else ''}!", 
+                        text=f"✅ Successfully uploaded {len(uploaded_files)} file{'s' if len(uploaded_files) != 1 else ''}!",
                         fg=COLORS['success']
                     )
                     messagebox.showinfo("Upload Complete", f"Successfully uploaded {len(uploaded_files)} documents!")
-                elif uploaded_files and failed_files:
-                    status_label.config(
-                        text=f"⚠️ {len(uploaded_files)} uploaded, {len(failed_files)} failed", 
-                        fg=COLORS['warning']
-                    )
-                    messagebox.showwarning(
-                        "Partial Upload", 
-                        f"Uploaded: {len(uploaded_files)} files\nFailed: {len(failed_files)} files\n\nFailed files:\n" + 
-                        "\n".join(failed_files[:3]) + ("..." if len(failed_files) > 3 else "")
-                    )
-                else:
-                    status_label.config(text="❌ All uploads failed", fg=COLORS['danger'])
-                    messagebox.showerror("Upload Failed", "All file uploads failed:\n" + "\n".join(failed_files[:3]))
-                
-                # Reset form if all successful
-                if not failed_files:
+
+                    # Reset form on complete success
                     selected_files.clear()
+                    corporation_var.set("")
                     department_var.set("")
                     transaction_type_var.set("")
+                    sub_category_var.set("")
+                    uploaded_by_var.set("")
                     progress_var.set(0)
                     update_file_list()
                     status_label.config(text="Ready to upload", fg=COLORS['text_light'])
-                
+                    sub_category_section.pack_forget()
+
+                elif uploaded_files and failed_files:
+                    status_label.config(
+                        text=f"⚠️ {len(uploaded_files)} uploaded, {len(failed_files)} failed",
+                        fg=COLORS['warning']
+                    )
+                    messagebox.showwarning(
+                        "Partial Upload",
+                        f"Uploaded: {len(uploaded_files)} files\nFailed: {len(failed_files)} files"
+                    )
+                else:
+                    status_label.config(text="❌ All uploads failed", fg=COLORS['danger'])
+                    messagebox.showerror("Upload Failed", "All file uploads failed")
+
             except Exception as e:
                 progress_var.set(0)
                 status_label.config(text="❌ Upload failed", fg=COLORS['danger'])
@@ -357,10 +464,10 @@ def open_head_office_popup(parent_admin):
     # Create popup window
     popup = tk.Toplevel(parent_admin)
     popup.title("📤 Head Office Multi-File Upload")
-    popup.geometry("600x700")
+    popup.geometry("600x820")
     popup.configure(bg=COLORS['light'])
     popup.grab_set()
-    popup.resizable(True, False)  # Allow horizontal resize, fixed height
+    popup.resizable(True, False)
 
     # Center the window
     popup.update_idletasks()
@@ -369,8 +476,11 @@ def open_head_office_popup(parent_admin):
     popup.geometry(f"+{x}+{y}")
 
     # Variables
+    corporation_var = tk.StringVar()
     department_var = tk.StringVar()
     transaction_type_var = tk.StringVar()
+    sub_category_var = tk.StringVar()
+    uploaded_by_var = tk.StringVar()
     progress_var = tk.IntVar(value=0)
 
     # Main container
@@ -380,10 +490,10 @@ def open_head_office_popup(parent_admin):
     # Header
     header_frame = create_styled_frame(main_frame, COLORS['primary'])
     header_frame.pack(fill='x', pady=(0, 20))
-    
+
     header_label = tk.Label(
         header_frame,
-        text="📋 Multi-Document Upload Center",
+        text="📋 Record Management System",
         font=('Segoe UI', 16, 'bold'),
         bg=COLORS['primary'],
         fg='white',
@@ -394,104 +504,179 @@ def open_head_office_popup(parent_admin):
     # Form container with scrollable area
     form_container = create_styled_frame(main_frame)
     form_container.pack(fill='both', expand=True, padx=10)
-    
-    # Create canvas for scrollable form
+
     form_canvas = tk.Canvas(form_container, bg=COLORS['white'], highlightthickness=0)
     form_scrollbar = ttk.Scrollbar(form_container, orient="vertical", command=form_canvas.yview)
     form_frame = tk.Frame(form_canvas, bg=COLORS['white'])
-    
+
     form_frame.bind(
         "<Configure>",
         lambda e: form_canvas.configure(scrollregion=form_canvas.bbox("all"))
     )
-    
+
     form_canvas.create_window((0, 0), window=form_frame, anchor="nw")
     form_canvas.configure(yscrollcommand=form_scrollbar.set)
-    
-    # Enable mouse wheel scrolling for form
+
     def on_form_mousewheel(event):
-        form_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        form_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
     form_canvas.bind("<MouseWheel>", on_form_mousewheel)
-    
-    # Pack canvas and scrollbar
+
     form_canvas.pack(side="left", fill="both", expand=True)
     form_scrollbar.pack(side="right", fill="y")
+
+    # Corporation section
+    corp_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    corp_section.pack(fill='x', pady=(0, 15), padx=5)
+
+    corp_label = tk.Label(
+        corp_section,
+        text="🏢 Corporation",
+        font=('Segoe UI', 11, 'bold'),
+        bg=COLORS['light'],
+        fg=COLORS['text'],
+        anchor='w'
+    )
+    corp_label.pack(fill='x', padx=15, pady=(15, 5))
+
+    corporation_dropdown = ttk.Combobox(
+        corp_section,
+        textvariable=corporation_var,
+        state="readonly",
+        font=('Segoe UI', 10),
+        values=dept_manager.get_corporations()
+    )
+    corporation_dropdown.pack(fill='x', padx=15, pady=(0, 15))
 
     # Department section
     dept_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
     dept_section.pack(fill='x', pady=(0, 15), padx=5)
-    
-    tk.Label(
+
+    dept_label = tk.Label(
         dept_section,
         text="🏢 Department",
         font=('Segoe UI', 11, 'bold'),
         bg=COLORS['light'],
         fg=COLORS['text'],
         anchor='w'
-    ).pack(fill='x', padx=15, pady=(15, 5))
-    
+    )
+    dept_label.pack(fill='x', padx=15, pady=(15, 5))
+
     department_dropdown = ttk.Combobox(
         dept_section,
         textvariable=department_var,
         state="readonly",
         font=('Segoe UI', 10),
-        values=["Accounting", "Liaison Department", "Compliance Department"]
+        values=dept_manager.get_departments()
     )
     department_dropdown.pack(fill='x', padx=15, pady=(0, 15))
+    department_dropdown.bind('<<ComboboxSelected>>', on_department_change)
 
     # Transaction Type section
     trans_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
     trans_section.pack(fill='x', pady=(0, 15), padx=5)
-    
-    tk.Label(
+
+    trans_label = tk.Label(
         trans_section,
         text="📋 Transaction Type",
         font=('Segoe UI', 11, 'bold'),
         bg=COLORS['light'],
         fg=COLORS['text'],
         anchor='w'
-    ).pack(fill='x', padx=15, pady=(15, 5))
-    
+    )
+    trans_label.pack(fill='x', padx=15, pady=(15, 5))
+
     transaction_dropdown = ttk.Combobox(
         trans_section,
         textvariable=transaction_type_var,
         state="readonly",
         font=('Segoe UI', 10),
-        values=["Invoice", "Purchase Order", "Delivery Receipt", "Contract", "Report", "Memo"]
+        values=[]
     )
     transaction_dropdown.pack(fill='x', padx=15, pady=(0, 15))
+    transaction_dropdown.bind('<<ComboboxSelected>>', on_transaction_change)
 
-    # Date section
-    date_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
-    date_section.pack(fill='x', pady=(0, 15), padx=5)
-    
+    # Sub-category section (initially hidden)
+    sub_category_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+
+    sub_category_label = tk.Label(
+        sub_category_section,
+        text="📚 Sub-Category",
+        font=('Segoe UI', 11, 'bold'),
+        bg=COLORS['light'],
+        fg=COLORS['text'],
+        anchor='w'
+    )
+    sub_category_label.pack(fill='x', padx=15, pady=(15, 5))
+
+    sub_category_dropdown = ttk.Combobox(
+        sub_category_section,
+        textvariable=sub_category_var,
+        state="readonly",
+        font=('Segoe UI', 10),
+        values=[]
+    )
+    sub_category_dropdown.pack(fill='x', padx=15, pady=(0, 15))
+
+    # Uploaded By section (replacing Document Date)
+    uploaded_by_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    uploaded_by_section.pack(fill='x', pady=(0, 15), padx=5)
+
     tk.Label(
-        date_section,
-        text="📅 Document Date",
+        uploaded_by_section,
+        text="👤 Uploaded By",
         font=('Segoe UI', 11, 'bold'),
         bg=COLORS['light'],
         fg=COLORS['text'],
         anchor='w'
     ).pack(fill='x', padx=15, pady=(15, 5))
-    
-    date_entry = DateEntry(
-        date_section,
-        width=18,
-        background=COLORS['primary'],
-        foreground='white',
-        borderwidth=2,
-        font=('Segoe UI', 10)
-    )
-    date_entry.pack(padx=15, pady=(0, 15), anchor='w')
 
-    # File section (fixed height to prevent overflow)
+    uploaded_by_entry = tk.Entry(
+        uploaded_by_section,
+        textvariable=uploaded_by_var,
+        font=('Segoe UI', 10),
+        relief='solid',
+        bd=1,
+        bg=COLORS['white'],
+        fg=COLORS['text']
+    )
+    uploaded_by_entry.pack(fill='x', padx=15, pady=(0, 10))
+
+    # Add placeholder text functionality
+    def on_focus_in(event):
+        if uploaded_by_entry.get() == "Enter your name ":
+            uploaded_by_entry.delete(0, tk.END)
+            uploaded_by_entry.config(fg=COLORS['text'])
+
+    def on_focus_out(event):
+        if uploaded_by_entry.get() == "":
+            uploaded_by_entry.insert(0, "Enter your name")
+            uploaded_by_entry.config(fg=COLORS['text_light'])
+
+    # Set initial placeholder
+    uploaded_by_entry.insert(0, "Enter your name")
+    uploaded_by_entry.config(fg=COLORS['text_light'])
+    uploaded_by_entry.bind('<FocusIn>', on_focus_in)
+    uploaded_by_entry.bind('<FocusOut>', on_focus_out)
+
+    # Helper text
+    helper_label = tk.Label(
+        uploaded_by_section,
+        text="💡 Enter the name of the person uploading these documents",
+        font=('Segoe UI', 8),
+        bg=COLORS['light'],
+        fg=COLORS['text_light'],
+        anchor='w'
+    )
+    helper_label.pack(fill='x', padx=15, pady=(0, 15))
+
+    # File section
     file_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
     file_section.pack(fill='x', pady=(0, 15), padx=5)
-    
-    # File section header
+
     file_header_frame = create_styled_frame(file_section, COLORS['light'])
     file_header_frame.pack(fill='x', padx=15, pady=(15, 5))
-    
+
     tk.Label(
         file_header_frame,
         text="📎 Document Files",
@@ -500,7 +685,7 @@ def open_head_office_popup(parent_admin):
         fg=COLORS['text'],
         anchor='w'
     ).pack(side='left')
-    
+
     files_info_label = tk.Label(
         file_header_frame,
         text="0 files selected",
@@ -510,11 +695,11 @@ def open_head_office_popup(parent_admin):
         anchor='e'
     )
     files_info_label.pack(side='right')
-    
+
     # File management buttons
     file_btn_frame = create_styled_frame(file_section, COLORS['light'])
     file_btn_frame.pack(fill='x', padx=15, pady=(0, 10))
-    
+
     add_files_btn = create_modern_button(
         file_btn_frame,
         "📁 Add Files",
@@ -524,7 +709,7 @@ def open_head_office_popup(parent_admin):
         width=12
     )
     add_files_btn.pack(side='left')
-    
+
     clear_btn = create_modern_button(
         file_btn_frame,
         "🗑️ Clear All",
@@ -533,19 +718,19 @@ def open_head_office_popup(parent_admin):
         width=10
     )
     clear_btn.pack(side='left', padx=(10, 0))
-    
-    # File list container (fixed height with scrollbar)
+
+    # File list container
     file_list_container = create_styled_frame(file_section, COLORS['light'])
     file_list_container.pack(fill='x', padx=15, pady=(0, 10))
-    file_list_container.configure(height=200)  # Fixed height
-    
+    file_list_container.configure(height=200)
+
     file_list_frame = create_styled_frame(file_list_container, COLORS['light'])
     file_list_frame.pack(fill='both', expand=True)
-    
+
     # Supported formats info
     formats_label = tk.Label(
         file_section,
-        text="💡 Supported: JPG, PNG, PDF, DOCX (Max 50MB each)",
+        text="💡 Supported: PDF)",
         font=('Segoe UI', 8),
         bg=COLORS['light'],
         fg=COLORS['text_light'],
@@ -556,7 +741,7 @@ def open_head_office_popup(parent_admin):
     # Progress section
     progress_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
     progress_section.pack(fill='x', pady=(0, 15), padx=5)
-    
+
     tk.Label(
         progress_section,
         text="📊 Upload Progress",
@@ -565,7 +750,7 @@ def open_head_office_popup(parent_admin):
         fg=COLORS['text'],
         anchor='w'
     ).pack(fill='x', padx=15, pady=(15, 5))
-    
+
     progress_bar = ttk.Progressbar(
         progress_section,
         variable=progress_var,
@@ -573,7 +758,7 @@ def open_head_office_popup(parent_admin):
         style='TProgressbar'
     )
     progress_bar.pack(fill='x', padx=15, pady=(0, 10))
-    
+
     status_label = tk.Label(
         progress_section,
         text="Ready to upload",
@@ -587,7 +772,7 @@ def open_head_office_popup(parent_admin):
     # Button section
     button_frame = create_styled_frame(main_frame)
     button_frame.pack(fill='x', pady=(20, 0))
-    
+
     upload_btn = create_modern_button(
         button_frame,
         "🚀 Upload All Files",
@@ -597,7 +782,7 @@ def open_head_office_popup(parent_admin):
         width=18
     )
     upload_btn.pack(side='left', padx=(0, 10))
-    
+
     close_btn = create_modern_button(
         button_frame,
         "❌ Close",
