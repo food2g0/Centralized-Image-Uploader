@@ -10,16 +10,18 @@ def open_admin_dashboard_group2(admin_data):
     import datetime
     from itertools import islice
     from head_office_popup import open_head_office_popup
+    from head_office_images import open_head_office_images
+    from Colors import COLORS
+    from corporations import group2_corporations
+    from notification_system import NotificationSystem  # Import the notification system
 
     admin = tk.Tk()
     admin.title("Admin Dashboard - Record Management System")
-    admin.state('zoomed')  # Maximize on Windows
+    admin.state('zoomed')  
     admin.configure(bg="#f8fafc")
-
 
     screen_width = admin.winfo_screenwidth()
     screen_height = admin.winfo_screenheight()
-    
 
     min_width = max(1024, int(screen_width * 0.8))
     min_height = max(768, int(screen_height * 0.8))
@@ -30,35 +32,22 @@ def open_admin_dashboard_group2(admin_data):
     # Responsive scaling factors
     scale_factor = min(screen_width / 1920, screen_height / 1080)
     font_scale = max(0.8, min(1.2, scale_factor))
-    
 
     sidebar_width = max(250, min(350, int(screen_width * 0.2)))
-    
+
     # Responsive font sizes
     def get_font_size(base_size):
         return max(8, int(base_size * font_scale))
 
-    # Modern color scheme
-    colors = {
-        'primary': '#1e293b',
-        'secondary': '#3b82f6',
-        'accent': '#06b6d4',
-        'success': '#10b981',
-        'danger': '#ef4444',
-        'warning': '#f59e0b',
-        'surface': '#ffffff',
-        'background': '#f8fafc',
-        'muted': '#64748b',
-        'text': '#0f172a',
-        'border': '#e2e8f0'
-    }
+    # Initialize notification system
+    notification_system = NotificationSystem(admin, admin_data)
 
     # Responsive ttk styles
     style = ttk.Style()
     style.theme_use('clam')
-    
+
     style.configure('Modern.TButton',
-                    background=colors['secondary'],
+                    background=COLORS['secondary'],
                     foreground='white',
                     borderwidth=0,
                     focuscolor='none',
@@ -69,7 +58,7 @@ def open_admin_dashboard_group2(admin_data):
               background=[('active', '#2563eb'), ('pressed', '#1d4ed8')])
 
     # Responsive sidebar
-    sidebar = tk.Frame(admin, width=sidebar_width, bg=colors['primary'], relief="flat")
+    sidebar = tk.Frame(admin, width=sidebar_width, bg=COLORS['sidebar'], relief="flat")
     sidebar.pack(side="left", fill="y")
     sidebar.pack_propagate(False)
 
@@ -78,7 +67,7 @@ def open_admin_dashboard_group2(admin_data):
         admin,
         text="☰",
         font=("Segoe UI", get_font_size(16), "bold"),
-        bg=colors['primary'],
+        bg=COLORS['sidebar'],
         fg="white",
         bd=0,
         relief="flat",
@@ -90,36 +79,44 @@ def open_admin_dashboard_group2(admin_data):
 
     # Main content area with responsive padding
     responsive_padding = max(10, int(20 * font_scale))
-    main_frame = tk.Frame(admin, bg=colors['background'])
+    main_frame = tk.Frame(admin, bg=COLORS['background'])
     main_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=responsive_padding, pady=responsive_padding)
 
-    # Responsive header
-    header_frame = tk.Frame(main_frame, bg=colors['surface'], relief="flat", bd=1)
+    # Responsive header with refresh and notification buttons
+    header_frame = tk.Frame(main_frame, bg=COLORS['surface'], relief="flat", bd=1)
     header_frame.pack(fill="x", pady=(0, responsive_padding), ipady=int(15 * font_scale))
 
+    # Title section
+    title_frame = tk.Frame(header_frame, bg=COLORS['surface'])
+    title_frame.pack(side="left", fill="both", expand=True)
+
     tk.Label(
-        header_frame,
+        title_frame,
         text="Record Management System",
         font=("Segoe UI", get_font_size(20), "bold"),
-        bg=colors['surface'],
-        fg=colors['text']
+        bg=COLORS['surface'],
+        fg=COLORS['text']
     ).pack(pady=int(10 * font_scale))
 
-    content_frame = tk.Frame(main_frame, bg=colors['background'])
+    # Buttons frame in top right (now contains both refresh and notification buttons)
+    buttons_frame = tk.Frame(header_frame, bg=COLORS['surface'])
+    buttons_frame.pack(side="right", padx=int(20 * font_scale), pady=int(10 * font_scale))
+
+    content_frame = tk.Frame(main_frame, bg=COLORS['background'])
     content_frame.pack(fill=tk.BOTH, expand=True)
 
     # Responsive image viewer
-    viewer_frame = tk.Frame(content_frame, bg=colors['surface'], relief="flat", bd=1)
+    viewer_frame = tk.Frame(content_frame, bg=COLORS['surface'], relief="flat", bd=1)
     viewer_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=(0, int(10 * font_scale)))
     viewer_frame.pack_propagate(False)
 
     # Responsive canvas with scrollbar
-    canvas = tk.Canvas(viewer_frame, bg=colors['surface'], highlightthickness=0, bd=0)
-    
+    canvas = tk.Canvas(viewer_frame, bg=COLORS['surface'], highlightthickness=0, bd=0)
+
     scrollbar_width = max(12, int(16 * font_scale))
     scrollbar = tk.Scrollbar(viewer_frame, orient="vertical", command=canvas.yview,
-                             bg=colors['border'], troughcolor=colors['background'],
-                             activebackground=colors['secondary'], width=scrollbar_width)
+                             bg=COLORS['border'], troughcolor=COLORS['background'],
+                             activebackground=COLORS['secondary'], width=scrollbar_width)
     canvas.configure(yscrollcommand=scrollbar.set)
     scrollbar.pack(side="right", fill="y", padx=(2, 0))
     canvas.pack(side="left", fill="both", expand=True)
@@ -127,7 +124,7 @@ def open_admin_dashboard_group2(admin_data):
     last_branch = [None]
     last_corporation = [None]
 
-    scroll_frame = tk.Frame(canvas, bg=colors['surface'])
+    scroll_frame = tk.Frame(canvas, bg=COLORS['surface'])
     scroll_window = canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
 
     def on_frame_configure(event):
@@ -143,7 +140,7 @@ def open_admin_dashboard_group2(admin_data):
     # Bind mouse wheel events to the canvas and related widgets
     canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows
     canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux wheel up
-    canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux wheel down
+    canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux wheel down
 
     # Also bind to the scroll_frame and main elements for better coverage
     scroll_frame.bind("<MouseWheel>", _on_mousewheel)
@@ -151,38 +148,31 @@ def open_admin_dashboard_group2(admin_data):
 
     # Make sure the canvas can receive focus for mouse events
     canvas.focus_set()
-    
-    def bind_mousewheel_to_main_widgets(widget):
 
+    def bind_mousewheel_to_main_widgets(widget):
         try:
             widget.bind("<MouseWheel>", _on_mousewheel)
             widget.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
             widget.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
         except:
             pass
-        
+
         for child in widget.winfo_children():
             bind_mousewheel_to_main_widgets(child)
 
-# Add this at the end of your show_images function, after all widgets are created:
-        
+        # Add this at the end of your show_images function, after all widgets are created:
+
         # Ensure scroll wheel works on all main content widgets
         bind_mousewheel_to_main_widgets(scroll_frame)
-        
+
         # Also bind to the canvas directly for better responsiveness
         canvas.bind("<Enter>", lambda e: canvas.focus_set())
-        
+
         # Make sure the canvas updates its scroll region
         scroll_frame.update_idletasks()
         canvas.configure(scrollregion=canvas.bbox("all"))
 
-
     image_refs = []
-
-    group2_corporations = {
-   "ASIAPHIL STAR", "MAJOREVIM", "MEGAWORLD DOMESTIC", "NORTHERN SUNSTAR",
-        "SAINT BARBARA PRIME", "SAN RAMON PLATINUM", "SILVERSTAR (J)"
-    }
 
     def chunks(iterable, size=10):
         it = iter(iterable)
@@ -203,6 +193,49 @@ def open_admin_dashboard_group2(admin_data):
 
     branches = sorted(branches)
 
+    def refresh_data():
+        """Refresh the current view"""
+        show_images(branch=last_branch[0], corporation=last_corporation[0])
+
+    def show_notifications():
+        """Show notifications - placeholder function"""
+        notification_system.open_notifications()
+
+    # Create notification button (beside refresh button)
+    notification_btn = tk.Button(
+        buttons_frame,
+        text="🔔 Notifications",
+        font=("Segoe UI", get_font_size(11), "bold"),
+        bg=COLORS['accent'],
+        fg="white",
+        bd=0,
+        relief="flat",
+        cursor="hand2",
+        padx=int(20 * font_scale),
+        pady=int(8 * font_scale),
+        command=show_notifications
+    )
+    notification_btn.pack(side="left", padx=(0, int(10 * font_scale)))
+
+    # Create refresh button
+    refresh_btn = tk.Button(
+        buttons_frame,
+        text="🔄 Refresh",
+        font=("Segoe UI", get_font_size(11), "bold"),
+        bg=COLORS['secondary'],
+        fg="white",
+        bd=0,
+        relief="flat",
+        cursor="hand2",
+        padx=int(20 * font_scale),
+        pady=int(8 * font_scale),
+        command=refresh_data
+    )
+    refresh_btn.pack(side="left")
+
+    # Rest of your existing code remains the same...
+    # [Continue with all the existing functions like show_images, etc.]
+
     def show_images(branch=None, corporation=None):
         for widget in scroll_frame.winfo_children():
             widget.destroy()
@@ -210,9 +243,9 @@ def open_admin_dashboard_group2(admin_data):
 
         # Responsive filter frame
         filter_padding = max(12, int(15 * font_scale))
-        filter_frame = tk.Frame(scroll_frame, bg=colors['surface'], relief="flat", bd=1)
-        filter_frame.pack(pady=(filter_padding, int(10 * font_scale)), fill="x", 
-                         padx=int(20 * font_scale), ipady=int(12 * font_scale))
+        filter_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
+        filter_frame.pack(pady=(filter_padding, int(10 * font_scale)), fill="x",
+                          padx=int(20 * font_scale), ipady=int(12 * font_scale))
 
         if corporation:
             all_images = []
@@ -229,7 +262,7 @@ def open_admin_dashboard_group2(admin_data):
         filename_search_var = tk.StringVar()
 
         # Responsive filter rows
-        filter_row1 = tk.Frame(filter_frame, bg=colors['surface'])
+        filter_row1 = tk.Frame(filter_frame, bg=COLORS['surface'])
         filter_row1.pack(fill="x", pady=(0, int(8 * font_scale)))
 
         # Responsive labels and controls
@@ -237,16 +270,16 @@ def open_admin_dashboard_group2(admin_data):
             filter_row1,
             text="Transaction Type:",
             font=("Segoe UI", get_font_size(11), "bold"),
-            bg=colors['surface'],
-            fg=colors['text']
+            bg=COLORS['surface'],
+            fg=COLORS['text']
         ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
 
         trans_type_menu = tk.OptionMenu(filter_row1, trans_type_var, *transaction_types)
         trans_type_menu.config(
             font=("Segoe UI", get_font_size(10)),
-            bg=colors['surface'],
-            fg=colors['text'],
-            activebackground=colors['secondary'],
+            bg=COLORS['surface'],
+            fg=COLORS['text'],
+            activebackground=COLORS['secondary'],
             activeforeground='white',
             bd=1,
             relief="solid",
@@ -254,9 +287,9 @@ def open_admin_dashboard_group2(admin_data):
         )
         trans_type_menu["menu"].config(
             font=("Segoe UI", get_font_size(10)),
-            bg=colors['surface'],
-            fg=colors['text'],
-            activebackground=colors['secondary']
+            bg=COLORS['surface'],
+            fg=COLORS['text'],
+            activebackground=COLORS['secondary']
         )
         trans_type_menu.pack(side="left", padx=(0, int(20 * font_scale)))
 
@@ -265,8 +298,8 @@ def open_admin_dashboard_group2(admin_data):
             filter_row1,
             text="🔍 Search Filename:",
             font=("Segoe UI", get_font_size(11), "bold"),
-            bg=colors['surface'],
-            fg=colors['text']
+            bg=COLORS['surface'],
+            fg=COLORS['text']
         ).pack(side="left", padx=(0, int(5 * font_scale)))
 
         # Responsive search entry width
@@ -275,12 +308,12 @@ def open_admin_dashboard_group2(admin_data):
             filter_row1,
             textvariable=filename_search_var,
             font=("Segoe UI", get_font_size(10)),
-            bg=colors['surface'],
-            fg=colors['text'],
+            bg=COLORS['surface'],
+            fg=COLORS['text'],
             bd=1,
             relief="solid",
             width=search_width,
-            insertbackground=colors['secondary']
+            insertbackground=COLORS['secondary']
         )
         filename_search_entry.pack(side="left", padx=(0, int(10 * font_scale)))
 
@@ -288,20 +321,20 @@ def open_admin_dashboard_group2(admin_data):
         def on_filename_focus_in(event):
             if filename_search_entry.get() == "Type filename here...":
                 filename_search_entry.delete(0, tk.END)
-                filename_search_entry.config(fg=colors['text'])
+                filename_search_entry.config(fg=COLORS['text'])
 
         def on_filename_focus_out(event):
             if not filename_search_entry.get():
                 filename_search_entry.insert(0, "Type filename here...")
-                filename_search_entry.config(fg=colors['muted'])
+                filename_search_entry.config(fg=COLORS['muted'])
 
         filename_search_entry.insert(0, "Type filename here...")
-        filename_search_entry.config(fg=colors['muted'])
+        filename_search_entry.config(fg=COLORS['muted'])
         filename_search_entry.bind("<FocusIn>", on_filename_focus_in)
         filename_search_entry.bind("<FocusOut>", on_filename_focus_out)
 
         # Second row for date filters
-        filter_row2 = tk.Frame(filter_frame, bg=colors['surface'])
+        filter_row2 = tk.Frame(filter_frame, bg=COLORS['surface'])
         filter_row2.pack(fill="x")
 
         try:
@@ -311,8 +344,8 @@ def open_admin_dashboard_group2(admin_data):
                 filter_row2,
                 text="[tkcalendar not installed]",
                 font=("Segoe UI", get_font_size(10)),
-                fg=colors['danger'],
-                bg=colors['surface']
+                fg=COLORS['danger'],
+                bg=COLORS['surface']
             ).pack(side="left", padx=(0, int(5 * font_scale)))
             DateEntry = None
 
@@ -320,8 +353,8 @@ def open_admin_dashboard_group2(admin_data):
             filter_row2,
             text="From:",
             font=("Segoe UI", get_font_size(11), "bold"),
-            bg=colors['surface'],
-            fg=colors['text']
+            bg=COLORS['surface'],
+            fg=COLORS['text']
         ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
 
         start_date_var = tk.StringVar()
@@ -337,7 +370,7 @@ def open_admin_dashboard_group2(admin_data):
                 font=("Segoe UI", get_font_size(10)),
                 width=date_width,
                 date_pattern='yyyy-mm-dd',
-                background=colors['secondary'],
+                background=COLORS['secondary'],
                 foreground='white',
                 borderwidth=1,
                 relief="solid"
@@ -348,8 +381,8 @@ def open_admin_dashboard_group2(admin_data):
                 filter_row2,
                 text="To:",
                 font=("Segoe UI", get_font_size(11), "bold"),
-                bg=colors['surface'],
-                fg=colors['text']
+                bg=COLORS['surface'],
+                fg=COLORS['text']
             ).pack(side="left", padx=(0, int(5 * font_scale)))
 
             end_date_picker = DateEntry(
@@ -358,7 +391,7 @@ def open_admin_dashboard_group2(admin_data):
                 font=("Segoe UI", get_font_size(10)),
                 width=date_width,
                 date_pattern='yyyy-mm-dd',
-                background=colors['secondary'],
+                background=COLORS['secondary'],
                 foreground='white',
                 borderwidth=1,
                 relief="solid"
@@ -367,16 +400,16 @@ def open_admin_dashboard_group2(admin_data):
         else:
             date_entry_style = {
                 'font': ("Segoe UI", get_font_size(10)),
-                'bg': colors['surface'],
-                'fg': colors['text'],
+                'bg': COLORS['surface'],
+                'fg': COLORS['text'],
                 'bd': 1,
                 'relief': "solid",
-                'insertbackground': colors['secondary']
+                'insertbackground': COLORS['secondary']
             }
             tk.Entry(filter_row2, textvariable=start_date_var, width=date_width, **date_entry_style).pack(
                 side="left", padx=(0, int(10 * font_scale)))
-            tk.Label(filter_row2, text="To:", font=("Segoe UI", get_font_size(11), "bold"), 
-                    bg=colors['surface'], fg=colors['text']).pack(side="left", padx=(0, int(5 * font_scale)))
+            tk.Label(filter_row2, text="To:", font=("Segoe UI", get_font_size(11), "bold"),
+                     bg=COLORS['surface'], fg=COLORS['text']).pack(side="left", padx=(0, int(5 * font_scale)))
             tk.Entry(filter_row2, textvariable=end_date_var, width=date_width, **date_entry_style).pack(
                 side="left", padx=(0, int(15 * font_scale)))
 
@@ -397,7 +430,7 @@ def open_admin_dashboard_group2(admin_data):
         # Responsive button styling
         button_padding_x = max(12, int(15 * font_scale))
         button_padding_y = max(6, int(8 * font_scale))
-        
+
         button_style = {
             'font': ("Segoe UI", get_font_size(10), "bold"),
             'bd': 0,
@@ -410,14 +443,14 @@ def open_admin_dashboard_group2(admin_data):
         download_selected_btn = tk.Button(
             filter_row2,
             text="📥 Download Selected",
-            bg=colors['success'],
+            bg=COLORS['success'],
             fg="white",
             **button_style
         )
         delete_selected_btn = tk.Button(
             filter_row2,
             text="🗑️ Delete Selected",
-            bg=colors['danger'],
+            bg=COLORS['danger'],
             fg="white",
             **button_style
         )
@@ -517,13 +550,13 @@ def open_admin_dashboard_group2(admin_data):
             ttype = trans_type_var.get().strip().lower()
             start_val = clean_date(start_date_var.get().strip())
             end_val = clean_date(end_date_var.get().strip())
-            
+
             filename_query = filename_search_var.get().strip().lower()
             if filename_query and filename_query != "type filename here...":
                 img_filename = img.get("filename", "").strip().lower()
                 if filename_query not in img_filename:
                     return False
-            
+
             start_date = datetime.datetime.strptime(start_val, "%Y-%m-%d") if start_val else None
             end_date = datetime.datetime.strptime(end_val, "%Y-%m-%d") if end_val else None
             img_date_str = clean_date(img.get("date", ""))
@@ -626,19 +659,20 @@ def open_admin_dashboard_group2(admin_data):
 
             # Responsive search results info
             if filename_search_var.get().strip() and filename_search_var.get().strip().lower() != "type filename here...":
-                search_info_frame = tk.Frame(scroll_frame, bg=colors['surface'], relief="flat", bd=1)
-                search_info_frame.pack(fill="x", padx=int(20 * font_scale), pady=(int(5 * font_scale), int(8 * font_scale)), 
-                                      ipady=int(8 * font_scale))
-                
+                search_info_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
+                search_info_frame.pack(fill="x", padx=int(20 * font_scale),
+                                       pady=(int(5 * font_scale), int(8 * font_scale)),
+                                       ipady=int(8 * font_scale))
+
                 search_query = filename_search_var.get().strip()
                 results_count = len(filtered_images)
-                
+
                 tk.Label(
                     search_info_frame,
                     text=f"🔍 Search results for '{search_query}': {results_count} images found",
                     font=("Segoe UI", get_font_size(11), "bold"),
-                    bg=colors['surface'],
-                    fg=colors['secondary']
+                    bg=COLORS['surface'],
+                    fg=COLORS['secondary']
                 ).pack(padx=int(10 * font_scale), pady=int(5 * font_scale))
 
             # Responsive select all
@@ -655,7 +689,7 @@ def open_admin_dashboard_group2(admin_data):
                 update_selected_buttons()
                 display_images_page()
 
-            select_all_frame = tk.Frame(scroll_frame, bg=colors['surface'])
+            select_all_frame = tk.Frame(scroll_frame, bg=COLORS['surface'])
             select_all_frame.pack(fill="x", padx=int(20 * font_scale), pady=(int(5 * font_scale), int(8 * font_scale)))
 
             select_all_cb = tk.Checkbutton(
@@ -663,75 +697,76 @@ def open_admin_dashboard_group2(admin_data):
                 text="✓ Select All (this page & filter)",
                 variable=select_all_var,
                 command=on_select_all,
-                bg=colors['surface'],
-                fg=colors['text'],
+                bg=COLORS['surface'],
+                fg=COLORS['text'],
                 font=("Segoe UI", get_font_size(11), "bold"),
-                activebackground=colors['surface'],
-                activeforeground=colors['secondary'],
-                selectcolor=colors['secondary'],
+                activebackground=COLORS['surface'],
+                activeforeground=COLORS['secondary'],
+                selectcolor=COLORS['secondary'],
                 bd=0,
                 highlightthickness=0
             )
             select_all_cb.pack(anchor="w", padx=int(10 * font_scale), pady=int(5 * font_scale))
 
             if not page_images:
-                no_images_frame = tk.Frame(scroll_frame, bg=colors['surface'], relief="flat", bd=1)
-                no_images_frame.pack(pady=int(30 * font_scale), padx=int(20 * font_scale), fill="x", 
-                                   ipady=int(30 * font_scale))
-                
+                no_images_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
+                no_images_frame.pack(pady=int(30 * font_scale), padx=int(20 * font_scale), fill="x",
+                                     ipady=int(30 * font_scale))
+
                 if filename_search_var.get().strip() and filename_search_var.get().strip().lower() != "type filename here...":
                     tk.Label(
                         no_images_frame,
                         text="🔍 No files match your search",
                         font=("Segoe UI", get_font_size(16), "bold"),
-                        fg=colors['muted'],
-                        bg=colors['surface']
+                        fg=COLORS['muted'],
+                        bg=COLORS['surface']
                     ).pack()
                     tk.Label(
                         no_images_frame,
                         text=f"No images found with filename containing: '{filename_search_var.get().strip()}'",
                         font=("Segoe UI", get_font_size(12)),
-                        fg=colors['muted'],
-                        bg=colors['surface']
+                        fg=COLORS['muted'],
+                        bg=COLORS['surface']
                     ).pack(pady=(int(5 * font_scale), 0))
                 else:
                     tk.Label(
                         no_images_frame,
                         text="📁 No images found",
                         font=("Segoe UI", get_font_size(16), "bold"),
-                        fg=colors['muted'],
-                        bg=colors['surface']
+                        fg=COLORS['muted'],
+                        bg=COLORS['surface']
                     ).pack()
                     tk.Label(
                         no_images_frame,
                         text="Try adjusting your filters or select a different branch",
                         font=("Segoe UI", get_font_size(12)),
-                        fg=colors['muted'],
-                        bg=colors['surface']
+                        fg=COLORS['muted'],
+                        bg=COLORS['surface']
                     ).pack(pady=(int(5 * font_scale), 0))
                 return
 
             def view_full_image(img_data):
                 top = tk.Toplevel(admin)
                 top.title(f"📷 {img_data.get('filename', 'Image')}")
-                
+
                 # Responsive popup size
                 popup_width = max(800, min(1200, int(screen_width * 0.8)))
                 popup_height = max(600, min(900, int(screen_height * 0.8)))
                 top.geometry(f"{popup_width}x{popup_height}")
-                top.configure(bg=colors['background'])
+                top.configure(bg=COLORS['background'])
 
                 try:
                     response = requests.get(img_data["image_url"], timeout=10)
                     image_data = BytesIO(response.content)
                     pil_image = Image.open(image_data).convert("RGB")
                 except Exception as e:
-                    tk.Label(top, text=f"❌ Failed to load image: {e}", bg=colors['background'], fg=colors['danger'],
+                    tk.Label(top, text=f"❌ Failed to load image: {e}", bg=COLORS['background'], fg=COLORS['danger'],
                              font=("Segoe UI", get_font_size(12))).pack(pady=50)
                     return
 
-                canvas = tk.Canvas(top, bg=colors['surface'], highlightthickness=0, bd=0)
-                canvas.pack(fill="both", expand=True, padx=int(20 * font_scale), pady=(int(20 * font_scale), int(10 * font_scale)))
+                canvas_popup = tk.Canvas(top, bg=COLORS['surface'], highlightthickness=0, bd=0)
+                canvas_popup.pack(fill="both", expand=True, padx=int(20 * font_scale),
+                            pady=(int(20 * font_scale), int(10 * font_scale)))
 
                 zoom_factor = [1.0]
                 base_image = pil_image
@@ -741,10 +776,10 @@ def open_admin_dashboard_group2(admin_data):
                     resized_img = base_image.resize(new_size, Image.LANCZOS)
                     tk_image = ImageTk.PhotoImage(resized_img, master=top)
 
-                    canvas.delete("IMG")
-                    canvas.image_id = canvas.create_image(canvas.winfo_width() // 2, canvas.winfo_height() // 2,
+                    canvas_popup.delete("IMG")
+                    canvas_popup.image_id = canvas_popup.create_image(canvas_popup.winfo_width() // 2, canvas_popup.winfo_height() // 2,
                                                           anchor="center", image=tk_image, tags="IMG")
-                    canvas.image = tk_image
+                    canvas_popup.image = tk_image
 
                 def zoom(event):
                     if event.delta > 0 or event.num == 4:
@@ -762,20 +797,20 @@ def open_admin_dashboard_group2(admin_data):
                 def do_drag(event):
                     dx = event.x - drag_data["x"]
                     dy = event.y - drag_data["y"]
-                    canvas.move("IMG", dx, dy)
+                    canvas_popup.move("IMG", dx, dy)
                     drag_data["x"] = event.x
                     drag_data["y"] = event.y
 
-                canvas.bind("<MouseWheel>", zoom)
-                canvas.bind("<Button-4>", zoom)
-                canvas.bind("<Button-5>", zoom)
-                canvas.bind("<ButtonPress-1>", start_drag)
-                canvas.bind("<B1-Motion>", do_drag)
+                canvas_popup.bind("<MouseWheel>", zoom)
+                canvas_popup.bind("<Button-4>", zoom)
+                canvas_popup.bind("<Button-5>", zoom)
+                canvas_popup.bind("<ButtonPress-1>", start_drag)
+                canvas_popup.bind("<B1-Motion>", do_drag)
 
                 # Responsive zoom controls
-                zoom_frame = tk.Frame(top, bg=colors['surface'], relief="flat", bd=1)
-                zoom_frame.pack(fill="x", side="bottom", pady=(0, int(20 * font_scale)), 
-                               padx=int(20 * font_scale), ipady=int(8 * font_scale))
+                zoom_frame = tk.Frame(top, bg=COLORS['surface'], relief="flat", bd=1)
+                zoom_frame.pack(fill="x", side="bottom", pady=(0, int(20 * font_scale)),
+                                padx=int(20 * font_scale), ipady=int(8 * font_scale))
 
                 zoom_btn_style = {
                     'font': ("Segoe UI", get_font_size(10), "bold"),
@@ -789,7 +824,7 @@ def open_admin_dashboard_group2(admin_data):
                 tk.Button(
                     zoom_frame,
                     text="🔍+ Zoom In",
-                    bg=colors['secondary'],
+                    bg=COLORS['secondary'],
                     fg="white",
                     command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] * 1.1), render_image()],
                     **zoom_btn_style
@@ -798,7 +833,7 @@ def open_admin_dashboard_group2(admin_data):
                 tk.Button(
                     zoom_frame,
                     text="🔍- Zoom Out",
-                    bg=colors['muted'],
+                    bg=COLORS['muted'],
                     fg="white",
                     command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] / 1.1), render_image()],
                     **zoom_btn_style
@@ -832,51 +867,51 @@ def open_admin_dashboard_group2(admin_data):
                     if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
                         image_data = BytesIO(response.content)
                         pil_img = Image.open(image_data).convert("RGB")
-                        
+
                         # Responsive thumbnail size
                         thumb_size = max(150, min(250, int(200 * font_scale)))
                         pil_img.thumbnail((thumb_size, thumb_size))
                         photo = ImageTk.PhotoImage(pil_img, master=admin)
 
                         def update_ui():
-                            img_label.config(image=photo, text="", bg=colors['surface'])
+                            img_label.config(image=photo, text="", bg=COLORS['surface'])
                             img_label.image = photo
                             image_refs.append(photo)
                             img_label.bind("<Button-1>", lambda e, data=img_data: view_full_image(data))
 
                         admin.after(0, update_ui)
                     else:
-                        admin.after(0, lambda: img_label.config(text="❌ Not an image", fg=colors['danger'],
-                                                                bg=colors['surface']))
+                        admin.after(0, lambda: img_label.config(text="❌ Not an image", fg=COLORS['danger'],
+                                                                bg=COLORS['surface']))
                 except Exception as e:
-                    admin.after(0, lambda: img_label.config(text="❌ Failed to load", fg=colors['danger'],
-                                                            bg=colors['surface']))
+                    admin.after(0, lambda: img_label.config(text="❌ Failed to load", fg=COLORS['danger'],
+                                                            bg=COLORS['surface']))
 
             # Responsive image cards
             for img in page_images:
                 card_padding = max(15, int(20 * font_scale))
                 card_frame = tk.Frame(
                     scroll_frame,
-                    bg=colors['surface'],
+                    bg=COLORS['surface'],
                     relief="flat",
                     bd=1,
-                    highlightbackground=colors['border'],
+                    highlightbackground=COLORS['border'],
                     highlightthickness=1
                 )
-                card_frame.pack(padx=int(20 * font_scale), pady=int(8 * font_scale), fill="x", 
-                               ipadx=card_padding, ipady=card_padding)
+                card_frame.pack(padx=int(20 * font_scale), pady=int(8 * font_scale), fill="x",
+                                ipadx=card_padding, ipady=card_padding)
                 card_frame.grid_columnconfigure(1, weight=1)
 
                 # Responsive image preview
                 img_width = max(20, int(24 * font_scale))
                 img_height = max(8, int(10 * font_scale))
-                
+
                 img_label = tk.Label(
                     card_frame,
-                    bg=colors['surface'],
+                    bg=COLORS['surface'],
                     text="📷 Loading...",
                     font=("Segoe UI", get_font_size(11), "italic"),
-                    fg=colors['muted'],
+                    fg=COLORS['muted'],
                     width=img_width,
                     height=img_height,
                     borderwidth=0,
@@ -888,7 +923,7 @@ def open_admin_dashboard_group2(admin_data):
                     lbl.config(bg="#f1f5f9")
 
                 def on_leave(e, lbl=img_label):
-                    lbl.config(bg=colors['surface'])
+                    lbl.config(bg=COLORS['surface'])
 
                 img_label.bind("<Enter>", on_enter)
                 img_label.bind("<Leave>", on_leave)
@@ -896,7 +931,7 @@ def open_admin_dashboard_group2(admin_data):
                 Thread(target=load_image_async, args=(img, img_label), daemon=True).start()
 
                 # Responsive info section
-                info_frame = tk.Frame(card_frame, bg=colors['surface'])
+                info_frame = tk.Frame(card_frame, bg=COLORS['surface'])
                 info_frame.grid(row=0, column=1, padx=int(15 * font_scale), sticky="nsew")
 
                 # Enhanced filename display with search highlighting
@@ -904,23 +939,23 @@ def open_admin_dashboard_group2(admin_data):
                 search_query = filename_search_var.get().strip().lower()
                 if search_query and search_query != "type filename here..." and search_query in filename_text.lower():
                     filename_display = f"📄 {filename_text} ⭐"
-                    filename_color = colors['success']
+                    filename_color = COLORS['success']
                 else:
                     filename_display = filename_text
-                    filename_color = colors['muted']
+                    filename_color = COLORS['muted']
 
                 # Responsive info data
                 info_data = [
                     ("📄 File", filename_display, filename_color),
-                    ("🏢 Branch", img.get("branch", ""), colors['muted']),
-                    ("👤 Uploaded By", img.get("uploaded_by", ""), colors['muted']),
-                    ("📅 Transaction Date", img.get("date", ""), colors['muted']),
-                    ("💼 Transaction Type", img.get("transaction_type", ""), colors['muted']),
-                    ("⏰ Date Uploaded", format_timestamp(img.get("timestamp", "")), colors['muted']),
+                    ("🏢 Branch", img.get("branch", ""), COLORS['muted']),
+                    ("👤 Uploaded By", img.get("uploaded_by", ""), COLORS['muted']),
+                    ("📅 Transaction Date", img.get("date", ""), COLORS['muted']),
+                    ("💼 Transaction Type", img.get("transaction_type", ""), COLORS['muted']),
+                    ("⏰ Date Uploaded", format_timestamp(img.get("timestamp", "")), COLORS['muted']),
                 ]
 
                 for label, val, text_color in info_data:
-                    row = tk.Frame(info_frame, bg=colors['surface'])
+                    row = tk.Frame(info_frame, bg=COLORS['surface'])
                     row.pack(anchor="w", pady=int(3 * font_scale), fill="x")
 
                     label_width = max(15, int(18 * font_scale))
@@ -928,8 +963,8 @@ def open_admin_dashboard_group2(admin_data):
                         row,
                         text=f"{label}:",
                         font=("Segoe UI", get_font_size(10), "bold"),
-                        bg=colors['surface'],
-                        fg=colors['text'],
+                        bg=COLORS['surface'],
+                        fg=COLORS['text'],
                         width=label_width,
                         anchor="w"
                     ).pack(side="left")
@@ -939,15 +974,16 @@ def open_admin_dashboard_group2(admin_data):
                     tk.Label(
                         row,
                         text=val,
-                        font=("Segoe UI", get_font_size(10), "bold" if label == "📄 File" and "⭐" in str(val) else "normal"),
-                        bg=colors['surface'],
+                        font=("Segoe UI", get_font_size(10),
+                              "bold" if label == "📄 File" and "⭐" in str(val) else "normal"),
+                        bg=COLORS['surface'],
                         fg=text_color,
                         anchor="w",
                         wraplength=wrap_length
                     ).pack(side="left")
 
                 # Responsive actions frame
-                actions_frame = tk.Frame(card_frame, bg=colors['surface'])
+                actions_frame = tk.Frame(card_frame, bg=COLORS['surface'])
                 actions_frame.grid(row=0, column=2, padx=int(15 * font_scale), pady=int(10 * font_scale), sticky="ne")
 
                 # Responsive checkbox
@@ -957,12 +993,12 @@ def open_admin_dashboard_group2(admin_data):
                     text="Select",
                     variable=select_var,
                     command=lambda doc_id=img["doc_id"], var=select_var: on_select(doc_id, var),
-                    bg=colors['surface'],
-                    fg=colors['text'],
+                    bg=COLORS['surface'],
+                    fg=COLORS['text'],
                     font=("Segoe UI", get_font_size(10), "bold"),
-                    activebackground=colors['surface'],
-                    activeforeground=colors['secondary'],
-                    selectcolor=colors['secondary'],
+                    activebackground=COLORS['surface'],
+                    activeforeground=COLORS['secondary'],
+                    selectcolor=COLORS['secondary'],
                     bd=0,
                     highlightthickness=0
                 )
@@ -971,12 +1007,12 @@ def open_admin_dashboard_group2(admin_data):
                 # Responsive view button
                 view_btn_padding_x = max(10, int(12 * font_scale))
                 view_btn_padding_y = max(4, int(6 * font_scale))
-                
+
                 view_btn = tk.Button(
                     actions_frame,
                     text="👁️ View",
                     font=("Segoe UI", get_font_size(9), "bold"),
-                    bg=colors['accent'],
+                    bg=COLORS['accent'],
                     fg="white",
                     bd=0,
                     relief="flat",
@@ -988,9 +1024,9 @@ def open_admin_dashboard_group2(admin_data):
                 view_btn.pack()
 
             # Responsive navigation
-            nav_frame = tk.Frame(scroll_frame, bg=colors['surface'], relief="flat", bd=1)
-            nav_frame.pack(pady=int(15 * font_scale), padx=int(20 * font_scale), fill="x", 
-                          ipady=int(10 * font_scale))
+            nav_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
+            nav_frame.pack(pady=int(15 * font_scale), padx=int(20 * font_scale), fill="x",
+                           ipady=int(10 * font_scale))
 
             nav_btn_style = {
                 'font': ("Segoe UI", get_font_size(10), "bold"),
@@ -1006,7 +1042,7 @@ def open_admin_dashboard_group2(admin_data):
                 nav_frame,
                 text="⬅️ Previous",
                 state="normal" if current_page[0] > 0 else "disabled",
-                bg=colors['secondary'] if current_page[0] > 0 else colors['muted'],
+                bg=COLORS['secondary'] if current_page[0] > 0 else COLORS['muted'],
                 fg="white",
                 command=lambda: go_page(-1),
                 **nav_btn_style
@@ -1017,8 +1053,8 @@ def open_admin_dashboard_group2(admin_data):
             tk.Label(
                 nav_frame,
                 text=f"Page {current_page[0] + 1} of {max(1, (len(filtered_images) - 1) // images_per_page + 1)}",
-                bg=colors['surface'],
-                fg=colors['text'],
+                bg=COLORS['surface'],
+                fg=COLORS['text'],
                 font=("Segoe UI", get_font_size(11), "bold")
             ).pack(side="left", padx=int(20 * font_scale))
 
@@ -1027,7 +1063,7 @@ def open_admin_dashboard_group2(admin_data):
                 nav_frame,
                 text="Next ➡️",
                 state="normal" if end < len(filtered_images) else "disabled",
-                bg=colors['secondary'] if end < len(filtered_images) else colors['muted'],
+                bg=COLORS['secondary'] if end < len(filtered_images) else COLORS['sidebar'],
                 fg="white",
                 command=lambda: go_page(1),
                 **nav_btn_style
@@ -1047,7 +1083,7 @@ def open_admin_dashboard_group2(admin_data):
             filter_row2,
             text="🔍 Apply Filters",
             font=("Segoe UI", get_font_size(10), "bold"),
-            bg=colors['secondary'],
+            bg=COLORS['secondary'],
             fg="white",
             bd=0,
             relief="flat",
@@ -1061,7 +1097,7 @@ def open_admin_dashboard_group2(admin_data):
             filter_row2,
             text="📥 Download All",
             font=("Segoe UI", get_font_size(10), "bold"),
-            bg=colors['warning'],
+            bg=COLORS['warning'],
             fg="white",
             bd=0,
             relief="flat",
@@ -1074,7 +1110,7 @@ def open_admin_dashboard_group2(admin_data):
         # Clear search button
         def clear_filename_search():
             filename_search_var.set("")
-            filename_search_entry.config(fg=colors['muted'])
+            filename_search_entry.config(fg=COLORS['muted'])
             filename_search_entry.insert(0, "Type filename here...")
             apply_filters()
 
@@ -1082,7 +1118,7 @@ def open_admin_dashboard_group2(admin_data):
             filter_row1,
             text="❌ Clear",
             font=("Segoe UI", get_font_size(9), "bold"),
-            bg=colors['muted'],
+            bg=COLORS['muted'],
             fg="white",
             bd=0,
             relief="flat",
@@ -1101,7 +1137,7 @@ def open_admin_dashboard_group2(admin_data):
 
     # Responsive sidebar header
     header_height = max(70, int(80 * font_scale))
-    sidebar_header = tk.Frame(sidebar, bg=colors['primary'], height=header_height)
+    sidebar_header = tk.Frame(sidebar, bg=COLORS['sidebar'], height=header_height)
     sidebar_header.pack(fill="x", pady=(0, int(10 * font_scale)))
     sidebar_header.pack_propagate(False)
 
@@ -1109,7 +1145,7 @@ def open_admin_dashboard_group2(admin_data):
         sidebar_header,
         text=f"👋 Welcome",
         font=("Segoe UI", get_font_size(14), "bold"),
-        bg=colors['primary'],
+        bg=COLORS['sidebar'],
         fg="white"
     ).pack(pady=(int(20 * font_scale), int(2 * font_scale)))
 
@@ -1117,25 +1153,28 @@ def open_admin_dashboard_group2(admin_data):
         sidebar_header,
         text=group_name,
         font=("Segoe UI", get_font_size(16), "bold"),
-        bg=colors['primary'],
-        fg=colors['accent']
+        bg=COLORS['sidebar'],
+        fg=COLORS['accent']
     ).pack()
 
-    # Responsive scrollable branches container
-    branches_main_frame = tk.Frame(sidebar, bg=colors['primary'])
-    branches_main_frame.pack(fill="both", expand=True, padx=int(5 * font_scale), pady=(0, int(10 * font_scale)))
+    # Responsive scrollable branches container - REDUCED HEIGHT
+    available_height = screen_height - 200  # Account for header, search, buttons, footer
+    branches_container_height = max(150, min(300, int(available_height * 0.4)))  # More conservative
 
-    branches_canvas = tk.Canvas(branches_main_frame, bg=colors['primary'], highlightthickness=0, bd=0)
+    branches_main_frame = tk.Frame(sidebar, bg=COLORS['sidebar'])
+    branches_main_frame.pack(fill="both", expand=True, padx=int(5 * font_scale), pady=(0, int(5 * font_scale)))
+
+    branches_canvas = tk.Canvas(branches_main_frame, bg=COLORS['sidebar'], highlightthickness=0, bd=0)
     scrollbar_width = max(10, int(12 * font_scale))
     branches_scrollbar = tk.Scrollbar(branches_main_frame, orient="vertical", command=branches_canvas.yview,
-                                      bg=colors['border'], troughcolor=colors['primary'],
-                                      activebackground=colors['secondary'], width=scrollbar_width)
+                                      bg=COLORS['border'], troughcolor=COLORS['sidebar'],
+                                      activebackground=COLORS['secondary'], width=scrollbar_width)
     branches_canvas.configure(yscrollcommand=branches_scrollbar.set)
 
     branches_scrollbar.pack(side="right", fill="y")
     branches_canvas.pack(side="left", fill="both", expand=True)
 
-    branches_frame = tk.Frame(branches_canvas, bg=colors['primary'])
+    branches_frame = tk.Frame(branches_canvas, bg=COLORS['sidebar'])
     branches_canvas_window = branches_canvas.create_window((0, 0), window=branches_frame, anchor="nw")
 
     def on_branches_configure(event):
@@ -1157,37 +1196,34 @@ def open_admin_dashboard_group2(admin_data):
     branches_canvas.bind("<Button-4>", _on_branches_mousewheel)  # Linux wheel up
     branches_canvas.bind("<Button-5>", _on_branches_mousewheel)  # Linux wheel down
 
-
     def bind_mousewheel_recursive(widget):
-        
-        
         widget.bind("<MouseWheel>", _on_branches_mousewheel)
         for child in widget.winfo_children():
             bind_mousewheel_recursive(child)
 
-    search_frame = tk.Frame(sidebar, bg=colors['primary'])
+    # Initialize variables for the sidebar components
     search_var = tk.StringVar()
     selected_corp_var = tk.StringVar()
-    selected_corp_var.set("Select Branch")
+    selected_corp_var.set("Select Corporation")
 
     corp_list = sorted(group2_corporations)
 
     def show_corporation_selector():
         popup = tk.Toplevel(admin)
         popup.title("🏢 Select Corporation")
-        
+
         # Responsive popup size
         popup_width = max(350, min(500, int(400 * font_scale)))
         popup_height = max(140, int(160 * font_scale))
         popup.geometry(f"{popup_width}x{popup_height}")
-        popup.configure(bg=colors['surface'])
+        popup.configure(bg=COLORS['surface'])
         popup.resizable(False, False)
 
         popup.transient(admin)
         popup.grab_set()
 
         header_height = max(40, int(50 * font_scale))
-        header_frame = tk.Frame(popup, bg=colors['secondary'], height=header_height)
+        header_frame = tk.Frame(popup, bg=COLORS['secondary'], height=header_height)
         header_frame.pack(fill="x")
         header_frame.pack_propagate(False)
 
@@ -1195,11 +1231,11 @@ def open_admin_dashboard_group2(admin_data):
             header_frame,
             text="🏢 Choose a Corporation",
             font=("Segoe UI", get_font_size(14), "bold"),
-            bg=colors['secondary'],
+            bg=COLORS['secondary'],
             fg="white"
         ).pack(pady=int(15 * font_scale))
 
-        content_frame = tk.Frame(popup, bg=colors['surface'])
+        content_frame = tk.Frame(popup, bg=COLORS['surface'])
         content_frame.pack(fill="both", expand=True, padx=int(20 * font_scale), pady=int(20 * font_scale))
 
         corp_var = tk.StringVar(value="Select Corporation")
@@ -1208,9 +1244,9 @@ def open_admin_dashboard_group2(admin_data):
         dropdown_width = max(20, int(25 * font_scale))
         corp_dropdown.config(
             font=("Segoe UI", get_font_size(11)),
-            bg=colors['surface'],
-            fg=colors['text'],
-            activebackground=colors['secondary'],
+            bg=COLORS['surface'],
+            fg=COLORS['text'],
+            activebackground=COLORS['secondary'],
             activeforeground='white',
             bd=1,
             relief="solid",
@@ -1218,9 +1254,9 @@ def open_admin_dashboard_group2(admin_data):
         )
         corp_dropdown["menu"].config(
             font=("Segoe UI", get_font_size(11)),
-            bg=colors['surface'],
-            fg=colors['text'],
-            activebackground=colors['secondary']
+            bg=COLORS['surface'],
+            fg=COLORS['text'],
+            activebackground=COLORS['secondary']
         )
         corp_dropdown.pack(pady=(0, int(15 * font_scale)))
 
@@ -1238,7 +1274,7 @@ def open_admin_dashboard_group2(admin_data):
             content_frame,
             text="📊 Show Images",
             font=("Segoe UI", get_font_size(11), "bold"),
-            bg=colors['success'],
+            bg=COLORS['success'],
             fg="white",
             bd=0,
             relief="flat",
@@ -1248,38 +1284,49 @@ def open_admin_dashboard_group2(admin_data):
             command=on_confirm
         ).pack()
 
-    # Responsive sidebar buttons
-    button_width = max(18, int(22 * font_scale))
-    button_padding_y = max(10, int(12 * font_scale))
-    
-    sidebar_btn_style = {
-        'font': ("Segoe UI", get_font_size(11), "bold"),
-        'bg': colors['secondary'],
-        'fg': "white",
-        'bd': 0,
-        'relief': "flat",
-        'cursor': "hand2",
-        'width': button_width,
-        'pady': button_padding_y
-    }
+    # FIXED SIDEBAR LAYOUT - Replace the old search_section and button_frame with this:
 
-    # Responsive fixed button layout
-    button_frame = tk.Frame(sidebar, bg=colors['primary'])
-    button_frame.pack(side="bottom", fill="x", pady=(int(10 * font_scale), 0))
+    # Create a proper container for all bottom elements
+    bottom_container = tk.Frame(sidebar, bg=COLORS['sidebar'])
+    bottom_container.pack(fill="x", pady=(int(5 * font_scale), 0))
 
-    tk.Button(
-        button_frame,
-        text="🔄 Refresh",
-        command=lambda: show_images(branch=last_branch[0], corporation=last_corporation[0]),
-        **sidebar_btn_style
-    ).pack(pady=int(8 * font_scale), padx=int(15 * font_scale))
+    # Search section - move this ABOVE the buttons
+    search_section = tk.Frame(bottom_container, bg=COLORS['sidebar'])
+    search_section.pack(fill="x", padx=int(15 * font_scale), pady=(0, int(8 * font_scale)))
 
-    tk.Button(
-        button_frame,
-        text="🏢 Select Corporation",
-        command=show_corporation_selector,
-        **sidebar_btn_style
-    ).pack(pady=int(8 * font_scale), padx=int(15 * font_scale))
+    tk.Label(
+        search_section,
+        text="🔍 Search Branch:",
+        font=("Segoe UI", get_font_size(11), "bold"),
+        bg=COLORS['sidebar'],
+        fg="white"
+    ).pack(pady=(0, int(3 * font_scale)))
+
+    search_width = max(20, int(25 * font_scale))
+    search_entry = tk.Entry(
+        search_section,
+        textvariable=search_var,
+        font=("Segoe UI", get_font_size(11)),
+        bg=COLORS['surface'],
+        fg=COLORS['text'],
+        bd=1,
+        relief="solid",
+        width=search_width,
+        insertbackground=COLORS['secondary']
+    )
+    search_entry.pack(pady=(0, int(3 * font_scale)))
+
+    # Corporation dropdown section
+    corp_section = tk.Frame(bottom_container, bg=COLORS['sidebar'])
+    corp_section.pack(fill="x", padx=int(15 * font_scale), pady=(0, int(8 * font_scale)))
+
+    tk.Label(
+        corp_section,
+        text="🏢 Corporation:",
+        font=("Segoe UI", get_font_size(11), "bold"),
+        bg=COLORS['sidebar'],
+        fg="white"
+    ).pack(pady=(0, int(3 * font_scale)))
 
     def on_corp_selected(*args):
         selected_corp = selected_corp_var.get()
@@ -1290,13 +1337,13 @@ def open_admin_dashboard_group2(admin_data):
             ])
             show_branch_buttons(filtered_branches)
 
-    corp_dropdown = tk.OptionMenu(button_frame, selected_corp_var, *corp_list, command=lambda _: on_corp_selected())
+    corp_dropdown = tk.OptionMenu(corp_section, selected_corp_var, *corp_list, command=lambda _: on_corp_selected())
     dropdown_width = max(16, int(20 * font_scale))
     corp_dropdown.config(
         font=("Segoe UI", get_font_size(10)),
-        bg=colors['surface'],
-        fg=colors['text'],
-        activebackground=colors['secondary'],
+        bg=COLORS['surface'],
+        fg=COLORS['text'],
+        activebackground=COLORS['secondary'],
         activeforeground='white',
         bd=1,
         relief="solid",
@@ -1304,11 +1351,215 @@ def open_admin_dashboard_group2(admin_data):
     )
     corp_dropdown["menu"].config(
         font=("Segoe UI", get_font_size(10)),
-        bg=colors['surface'],
-        fg=colors['text'],
-        activebackground=colors['secondary']
+        bg=COLORS['surface'],
+        fg=COLORS['text'],
+        activebackground=COLORS['secondary']
     )
-    corp_dropdown.pack(pady=(0, int(15 * font_scale)), padx=int(15 * font_scale))
+    corp_dropdown.pack(pady=(0, int(3 * font_scale)))
+
+    # Action buttons section
+    button_section = tk.Frame(bottom_container, bg=COLORS['sidebar'])
+    button_section.pack(fill="x", padx=int(15 * font_scale), pady=(int(3 * font_scale), 0))
+
+    # Responsive action buttons
+    button_width = max(18, int(22 * font_scale))
+    action_btn_style = {
+        'font': ("Segoe UI", get_font_size(11), "bold"),
+        'bd': 0,
+        'relief': "flat",
+        'cursor': "hand2",
+        'width': button_width,
+        'pady': int(6 * font_scale)  # Reduced padding
+    }
+
+    tk.Button(
+        button_section,
+        text="🏢 Select Corporation",
+        command=show_corporation_selector,
+        bg=COLORS['secondary'],
+        fg="white",
+        **action_btn_style
+    ).pack(pady=int(3 * font_scale), fill="x")  # Reduced pady
+
+    def logout():
+        admin.destroy()
+        try:
+            import login_gui
+            if hasattr(login_gui, 'open_login_gui'):
+                login_gui.open_login_gui()
+            elif hasattr(login_gui, 'main'):
+                login_gui.main()
+            else:
+                messagebox.showerror("Error", "Could not open login: No valid entry point found.")
+        except Exception as err:
+            messagebox.showerror("Error", f"Could not open login: {err}")
+
+    def head_office_menu():
+        """Create a popup menu for head office options"""
+        popup = tk.Toplevel(admin)
+        popup.title("🏢 Head Office Options")
+
+        # Responsive popup size
+        popup_width = max(320, min(450, int(380 * font_scale)))
+        popup_height = max(200, int(240 * font_scale))
+        popup.geometry(f"{popup_width}x{popup_height}")
+        popup.configure(bg=COLORS['surface'])
+        popup.resizable(False, False)
+
+        # Center the popup on the parent window
+        popup.transient(admin)
+        popup.grab_set()
+
+        # Calculate position to center on parent
+        x = admin.winfo_x() + (admin.winfo_width() // 2) - (popup_width // 2)
+        y = admin.winfo_y() + (admin.winfo_height() // 2) - (popup_height // 2)
+        popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+
+        # Header with gradient effect
+        header_frame = tk.Frame(popup, bg=COLORS['sidebar'], height=max(50, int(60 * font_scale)))
+        header_frame.pack(fill="x", pady=(0, int(20 * font_scale)))
+        header_frame.pack_propagate(False)
+
+        tk.Label(
+            header_frame,
+            text="🏢 Head Office Options",
+            font=("Segoe UI", get_font_size(16), "bold"),
+            bg=COLORS['sidebar'],
+            fg="white"
+        ).pack(expand=True)
+
+        # Buttons container with better spacing
+        content_frame = tk.Frame(popup, bg=COLORS['surface'])
+        content_frame.pack(fill="both", expand=True, padx=int(25 * font_scale), pady=int(10 * font_scale))
+
+        # Upload button with hover effects
+        upload_btn = tk.Button(
+            content_frame,
+            text="📤 Upload Documents",
+            font=("Segoe UI", get_font_size(12), "bold"),
+            bg=COLORS['success'],
+            fg="white",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            padx=int(25 * font_scale),
+            pady=int(12 * font_scale),
+            command=lambda: [popup.destroy(), open_head_office_popup(admin)]
+        )
+        upload_btn.pack(pady=int(8 * font_scale), fill="x")
+
+        # Hover effects for upload button
+        def on_upload_enter(e):
+            upload_btn.config(bg='#059669')  # Darker green
+
+        def on_upload_leave(e):
+            upload_btn.config(bg=COLORS['success'])
+
+        upload_btn.bind("<Enter>", on_upload_enter)
+        upload_btn.bind("<Leave>", on_upload_leave)
+
+        # View button with hover effects
+        view_btn = tk.Button(
+            content_frame,
+            text="👁️ View Documents",
+            font=("Segoe UI", get_font_size(12), "bold"),
+            bg=COLORS['secondary'],
+            fg="white",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            padx=int(25 * font_scale),
+            pady=int(12 * font_scale),
+            command=lambda: [popup.destroy(), open_head_office_images(admin)]
+        )
+        view_btn.pack(pady=int(8 * font_scale), fill="x")
+
+        # Hover effects for view button
+        def on_view_enter(e):
+            view_btn.config(bg='#2563eb')  # Darker blue
+
+        def on_view_leave(e):
+            view_btn.config(bg=COLORS['secondary'])
+
+        view_btn.bind("<Enter>", on_view_enter)
+        view_btn.bind("<Leave>", on_view_leave)
+
+        # Close button with subtle styling
+        close_btn = tk.Button(
+            content_frame,
+            text="✕ Close",
+            font=("Segoe UI", get_font_size(10), "bold"),
+            bg=COLORS['muted'],
+            fg="white",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            padx=int(20 * font_scale),
+            pady=int(8 * font_scale),
+            command=popup.destroy
+        )
+        close_btn.pack(pady=(int(15 * font_scale), 0))
+
+        # Hover effect for close button
+        def on_close_enter(e):
+            close_btn.config(bg=COLORS['danger'])
+
+        def on_close_leave(e):
+            close_btn.config(bg=COLORS['muted'])
+
+        close_btn.bind("<Enter>", on_close_enter)
+        close_btn.bind("<Leave>", on_close_leave)
+
+        # ESC key to close popup
+        popup.bind('<Escape>', lambda e: popup.destroy())
+        popup.focus_set()
+
+    tk.Button(
+        button_section,
+        text="➕ Add User",
+        bg=COLORS['success'],
+        fg="white",
+        command=lambda: open_add_user_popup_group2(admin),
+        **action_btn_style
+    ).pack(pady=int(3 * font_scale), fill="x")
+
+    tk.Button(
+        button_section,
+        text="🏢 Head Office ▼",
+        bg='#8b5cf6',  # Purple color
+        fg="white",
+        command=head_office_menu,
+        **action_btn_style
+    ).pack(pady=int(3 * font_scale), fill="x")
+
+    tk.Button(
+        button_section,
+        text="🚪 Logout",
+        bg=COLORS['danger'],
+        fg="white",
+        command=logout,
+        **action_btn_style
+    ).pack(pady=int(3 * font_scale), fill="x")
+
+    # Footer section
+    footer_section = tk.Frame(bottom_container, bg=COLORS['sidebar'])
+    footer_section.pack(fill="x", pady=(int(8 * font_scale), int(5 * font_scale)))
+
+    tk.Label(
+        footer_section,
+        text="💻 Developed by:",
+        font=("Segoe UI", get_font_size(9), "bold"),
+        fg="#94a3b8",
+        bg=COLORS['sidebar']
+    ).pack()
+
+    tk.Label(
+        footer_section,
+        text="Paolo Somido",
+        font=("Segoe UI", get_font_size(10), "bold"),
+        fg=COLORS['accent'],
+        bg=COLORS['sidebar']
+    ).pack()
 
     def update_branch_search(*args):
         query = search_var.get().strip().lower()
@@ -1334,7 +1585,7 @@ def open_admin_dashboard_group2(admin_data):
             'relief': "flat",
             'cursor': "hand2",
             'width': button_width,
-            'pady': int(8 * font_scale)
+            'pady': int(6 * font_scale)  # Reduced padding
         }
 
         for branch in show_list:
@@ -1348,7 +1599,7 @@ def open_admin_dashboard_group2(admin_data):
             btn.pack(pady=2, padx=int(15 * font_scale), fill="x")
 
             def on_enter(e, button=btn):
-                button.config(bg=colors['accent'])
+                button.config(bg=COLORS['accent'])
 
             def on_leave(e, button=btn):
                 button.config(bg="#475569")
@@ -1361,102 +1612,6 @@ def open_admin_dashboard_group2(admin_data):
         branches_canvas.configure(scrollregion=branches_canvas.bbox("all"))
         bind_mousewheel_recursive(branches_frame)
 
-    # Responsive search section
-    search_section = tk.Frame(sidebar, bg=colors['primary'])
-    search_section.pack(pady=int(10 * font_scale), padx=int(15 * font_scale), fill="x")
-
-    tk.Label(
-        search_section,
-        text="🔍 Search Branch:",
-        font=("Segoe UI", get_font_size(11), "bold"),
-        bg=colors['primary'],
-        fg="white"
-    ).pack(pady=(0, int(8 * font_scale)))
-
-    search_width = max(20, int(25 * font_scale))
-    search_entry = tk.Entry(
-        search_section,
-        textvariable=search_var,
-        font=("Segoe UI", get_font_size(11)),
-        bg=colors['surface'],
-        fg=colors['text'],
-        bd=1,
-        relief="solid",
-        width=search_width,
-        insertbackground=colors['secondary']
-    )
-    search_entry.pack(pady=(0, int(10 * font_scale)))
-
-    # Responsive action buttons
-    action_btn_style = {
-        'font': ("Segoe UI", get_font_size(11), "bold"),
-        'bd': 0,
-        'relief': "flat",
-        'cursor': "hand2",
-        'width': button_width,
-        'pady': int(5 * font_scale)
-    }
-
-    tk.Button(
-        button_frame,
-        text="➕ Add User",
-        bg=colors['success'],
-        fg="white",
-        command=lambda: open_add_user_popup_group2(admin),
-        **action_btn_style
-    ).pack(pady=int(8 * font_scale), padx=int(15 * font_scale))
-
-    def logout():
-        admin.destroy()
-        try:
-            import login_gui
-            if hasattr(login_gui, 'open_login_gui'):
-                login_gui.open_login_gui()
-            elif hasattr(login_gui, 'main'):
-                login_gui.main()
-            else:
-                messagebox.showerror("Error", "Could not open login: No valid entry point found.")
-        except Exception as err:
-            messagebox.showerror("Error", f"Could not open login: {err}")
-            
-    tk.Button(
-    button_frame,
-    text="🏢 Head Office",
-    bg='#8b5cf6',  # Purple color
-    fg="white",
-    command=lambda: open_head_office_popup(admin),
-    **action_btn_style
-    ).pack(pady=int(8 * font_scale), padx=int(15 * font_scale))
-
-    tk.Button(
-        button_frame,
-        text="🚪 Logout",
-        bg=colors['danger'],
-        fg="white",
-        command=logout,
-        **action_btn_style
-    ).pack(pady=int(8 * font_scale), padx=int(15 * font_scale))
-
-    # Responsive footer
-    footer_frame = tk.Frame(button_frame, bg=colors['primary'])
-    footer_frame.pack(side="bottom", fill="x", pady=int(10 * font_scale))
-
-    tk.Label(
-        footer_frame,
-        text="💻 Developed by:",
-        font=("Segoe UI", get_font_size(9), "bold"),
-        fg="#94a3b8",
-        bg=colors['primary']
-    ).pack()
-
-    tk.Label(
-        footer_frame,
-        text="Paolo Somido",
-        font=("Segoe UI", get_font_size(10), "bold"),
-        fg=colors['accent'],
-        bg=colors['primary']
-    ).pack()
-
     # Initialize branch buttons
     show_branch_buttons()
 
@@ -1466,7 +1621,7 @@ def open_admin_dashboard_group2(admin_data):
             # Update responsive elements when window is resized
             current_width = admin.winfo_width()
             current_height = admin.winfo_height()
-            
+
             # Recalculate scaling if needed
             new_scale = min(current_width / 1920, current_height / 1080)
             if abs(new_scale - scale_factor) > 0.1:  # Significant change
