@@ -4,12 +4,12 @@ import os
 import time
 import datetime
 from threading import Thread
-from firebase_config import storage, db  # pyrebase storage, firebase_admin db
+from firebase_config import storage, db
 from firebase_admin import firestore
 from Colors import COLORS
 from corporations import CORPORATIONS, DEPARTMENT_CONFIG
 
-# Allowed file types
+
 ALLOWED_EXTENSIONS = ".pdf"
 MAX_FILE_SIZE = 100 * 1024 * 1024
 
@@ -405,7 +405,7 @@ def open_head_office_popup(parent_admin):
                             "file_url": file_url,
                             "file_size": file_info['size'],
                             "upload_batch": timestamp,
-                            "timestamp": firestore.SERVER_TIMESTAMP
+                            "timestamp": datetime.datetime.now()
                         })
 
                         file_info['status'] = 'uploaded'
@@ -464,7 +464,7 @@ def open_head_office_popup(parent_admin):
     # Create popup window
     popup = tk.Toplevel(parent_admin)
     popup.title("📤 Head Office Multi-File Upload")
-    popup.geometry("600x820")
+    popup.geometry("600x720")
     popup.configure(bg=COLORS['light'])
     popup.grab_set()
     popup.resizable(True, False)

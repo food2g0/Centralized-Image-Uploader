@@ -28,7 +28,7 @@ CORPORATIONS = [
     "NORTH-WESTERN PACIFIC", "PACIFIC METROSTAR", "PUREGOLD KARAT",
     "SAN SEBASTIAN SILVER", "WORLDCREST", "WORLDGEM",
     "ASIAPHIL STAR", "MAJOREVIM", "MEGAWORLD DOMESTIC", "NORTHERN SUNSTAR",
-    "SAINT BARBARA PRIME", "SAN RAMON PLATINUM", "SILVERSTAR (J)"
+    "SAINT BARBARA PRIME", "SAN RAMON PLATINUM", "SILVERSTAR (J)", "GLOBAL RELIANCE MANAGEMENT & HOLDINGS CORP."
 ]
 
 DEPARTMENT_CONFIG = {
@@ -62,8 +62,6 @@ DEPARTMENT_CONFIG = {
     "HR Department": {
         "icon": "👥",
         "transactions": [
-            "Pre - Employment Requirements",
-            "Disciplinary Actions",
             "Memos",
             "DOLE Notifications / Resolutions",
             "Training Certificates",
@@ -74,17 +72,16 @@ DEPARTMENT_CONFIG = {
             "Personal action Notice",
             "NDA",
             "201 FILE",
+            "Resignation",
+            "Termination",
+            "Disciplinary Action / IR",
+
         ],
         "sub_categories": {
-            "201 FILE": [
-                "Employment Contract",
-                "Resignation",
-                "Termination",
-                "Job Description",
-            ]
+
         }
     },
-    "Cash Management Department": {
+    "Cash Management A/P Department": {
         "icon": "💰",
         "transactions": [
             "BIR PAYMENTS",
@@ -138,7 +135,7 @@ DEPARTMENT_CONFIG = {
             ],
             "PEST CONTROL": [
                 "Homegurad",
-                " Entom (pest control verdana)",
+                "Entom (pest control verdana)",
                 "Pest away (pest control banyan)",
             ],
         },
@@ -180,14 +177,11 @@ DEPARTMENT_CONFIG = {
     "IT Department": {
         "icon": "💻",
         "transactions": [
-            "System Maintenance",
-            "Software Installation",
-            "Hardware Setup",
-            "Network Configuration",
-            "Database Backup",
-            "Security Updates",
-            "Technical Support",
-            "Equipment Procurement"
+            "System Manual",
+            "System Memo",
+            "System Updates",
+            "Accounts",
+           
         ],
         "sub_categories": {}
     },
@@ -215,6 +209,7 @@ DEPARTMENT_CONFIG = {
         "transactions": [
             "Requisition Purchase",
             "Monthly Inventory Report",
+            "Order/Purchase Process"
             
         ],
         "sub_categories": {}
@@ -229,7 +224,14 @@ DEPARTMENT_CONFIG = {
             "Agreements",
             "Stock Certificate",
             "Deed of sale with DST"
-            
+        ],
+        "sub_categories": {}
+    },
+
+    "Cash Management A/R Department": {
+        "icon": "💻",
+        "transactions": [
+
         ],
         "sub_categories": {}
     },
