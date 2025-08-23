@@ -4,16 +4,13 @@ import os
 import time
 import datetime
 from threading import Thread
-from firebase_config import storage, db  
+from firebase_config import storage, db
 from firebase_admin import firestore
 from Colors import COLORS
 from corporations import CORPORATIONS, DEPARTMENT_CONFIG
 
-
-
 ALLOWED_EXTENSIONS = ".pdf"
 MAX_FILE_SIZE = 100 * 1024 * 1024
-
 
 
 class DepartmentTransactionManager:
@@ -108,48 +105,132 @@ def format_file_size(size_bytes):
         return f"{size_bytes / (1024 * 1024):.2f} MB"
 
 
-def setup_corporation_filtering(combobox, all_corporations, corporation_var):
-    """
-    Setup letter-based filtering for corporation dropdown
-    
-    Args:
-        combobox: The ttk.Combobox widget
-        all_corporations: List of all corporation names
-        corporation_var: The StringVar connected to the combobox
-    """
-    def filter_corporations(event):
-        """Filter based on typed letters"""
-        typed_text = combobox.get().upper()
-        
-        if not typed_text:
-            combobox['values'] = all_corporations
-            return
-            
-        # Filter corporations starting with typed letters
-        filtered = [corp for corp in all_corporations 
-                   if corp.upper().startswith(typed_text)]
-        
-        combobox['values'] = filtered
-        
-        # Show dropdown if there are matches
+def create_corporation_section_alternative(form_frame, corporation_var, all_corporations):
+    """Alternative corporation section with simpler, more reliable filtering"""
+
+    corp_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    corp_section.pack(fill='x', pady=(0, 15), padx=5)
+
+    corp_label = tk.Label(
+        corp_section,
+        text="🏢 Corporation (Type to search)",
+        font=('Segoe UI', 11, 'bold'),
+        bg=COLORS['light'],
+        fg=COLORS['text'],
+        anchor='w'
+    )
+    corp_label.pack(fill='x', padx=15, pady=(15, 5))
+
+    # Create frame for entry and listbox
+    search_frame = create_styled_frame(corp_section, COLORS['white'])
+    search_frame.pack(fill='x', padx=15, pady=(0, 10))
+
+    # Search entry
+    search_var = tk.StringVar()
+    search_entry = tk.Entry(
+        search_frame,
+        textvariable=search_var,
+        font=('Segoe UI', 10),
+        relief='solid',
+        bd=1
+    )
+    search_entry.pack(fill='x', pady=(0, 5))
+
+    # Results listbox
+    results_frame = tk.Frame(search_frame, bg=COLORS['white'])
+    results_listbox = tk.Listbox(
+        results_frame,
+        font=('Segoe UI', 9),
+        height=6,
+        relief='solid',
+        bd=1
+    )
+    scrollbar = tk.Scrollbar(results_frame, orient='vertical', command=results_listbox.yview)
+    results_listbox.configure(yscrollcommand=scrollbar.set)
+
+    # Selected corporation display
+    selected_frame = create_styled_frame(corp_section, COLORS['success'], relief='solid', bd=1)
+    selected_label = tk.Label(
+        selected_frame,
+        text="No corporation selected",
+        font=('Segoe UI', 10, 'bold'),
+        bg=COLORS['success'],
+        fg='white',
+        pady=8
+    )
+
+    def update_search(*args):
+        """Update search results"""
+        query = search_var.get().strip().upper()
+
+        # Clear current results
+        results_listbox.delete(0, tk.END)
+
+        if not query:
+            # Show all if empty
+            filtered = all_corporations[:20]  # Limit to first 20
+            if len(all_corporations) > 20:
+                results_listbox.insert(tk.END, f"... and {len(all_corporations) - 20} more (type to filter)")
+        else:
+            # Filter based on query
+            filtered = [corp for corp in all_corporations if query in corp.upper()][:20]
+            if len(filtered) == 0:
+                results_listbox.insert(tk.END, "No matches found")
+                results_frame.pack_forget()
+                return
+
+        # Add filtered results
+        for corp in filtered:
+            results_listbox.insert(tk.END, corp)
+
+        # Show results
         if filtered:
-            try:
-                combobox.event_generate('<Down>')
-            except:
-                pass  # Ignore if dropdown can't be opened
-    
-    def reset_corporations(event):
-        """Reset to show all corporations"""
-        combobox['values'] = all_corporations
-    
-    def on_selection(event):
+            results_frame.pack(fill='x', pady=(0, 10))
+            results_listbox.pack(side='left', fill='both', expand=True)
+            scrollbar.pack(side='right', fill='y')
+
+    def on_select(event):
         """Handle corporation selection"""
-        combobox['values'] = all_corporations
-    
-    # Bind the filtering events
-    combobox.bind('<KeyRelease>', filter_corporations)
-    combobox.bind('<FocusOut>', reset_corporations)
-    combobox.bind('<<ComboboxSelected>>', on_selection)
+        selection = results_listbox.curselection()
+        if selection:
+            selected_corp = results_listbox.get(selection[0])
+            if selected_corp in all_corporations:
+                corporation_var.set(selected_corp)
+                search_var.set(selected_corp)
+                selected_label.config(text=f"✓ Selected: {selected_corp}")
+                selected_frame.pack(fill='x', padx=15, pady=(0, 10))
+                results_frame.pack_forget()
+
+    def clear_selection():
+        """Clear current selection"""
+        corporation_var.set("")
+        search_var.set("")
+        selected_label.config(text="No corporation selected")
+        selected_frame.pack_forget()
+        results_frame.pack_forget()
+
+    # Clear button
+    clear_btn = tk.Button(
+        corp_section,
+        text="🗑️ Clear Selection",
+        command=clear_selection,
+        bg=COLORS['warning'],
+        fg='white',
+        font=('Segoe UI', 8),
+        relief='flat',
+        cursor='hand2'
+    )
+    clear_btn.pack(padx=15, pady=(0, 15))
+
+    # Bind events
+    search_var.trace('w', update_search)
+    results_listbox.bind('<Double-Button-1>', on_select)
+    results_listbox.bind('<Return>', on_select)
+
+    # Initialize
+    update_search()
+
+    return corp_section
 
 
 def open_head_office_dashboard(next_user_data):
@@ -340,42 +421,62 @@ def open_head_office_dashboard(next_user_data):
             sub_category_section.pack_forget()
 
     def validate_inputs():
-        """Enhanced validation with corporation filtering support"""
+        """Enhanced validation with better corporation filtering support"""
         errors = []
 
         if not selected_files:
             errors.append("Please select at least one file")
 
-        selected_corp = corporation_var.get().strip()  # Add strip() to handle spaces
+        # Clean and validate corporation
+        selected_corp = corporation_var.get().strip()
         selected_transaction = transaction_type_var.get()
         selected_sub = sub_category_var.get()
         uploaded_by = uploaded_by_var.get().strip()
 
+        # Corporation validation
         if not selected_corp:
             errors.append("Please select a corporation")
-        elif selected_corp not in dept_manager.get_corporations():
-            # Check if it's a partial match or invalid
-            matching_corps = [corp for corp in dept_manager.get_corporations() 
-                             if corp.upper().startswith(selected_corp.upper())]
-            if matching_corps:
-                errors.append(f"Please select a complete corporation name from the dropdown")
-            else:
-                errors.append("Invalid corporation selected")
+        else:
+            all_corps = dept_manager.get_corporations()
 
+            # Check for exact match first
+            if selected_corp in all_corps:
+                # Valid selection, no issues
+                pass
+            else:
+                # Check for case-insensitive exact match
+                exact_match = None
+                for corp in all_corps:
+                    if corp.upper() == selected_corp.upper():
+                        exact_match = corp
+                        break
+
+                if exact_match:
+                    # Auto-correct the case and update the variable
+                    corporation_var.set(exact_match)
+                    selected_corp = exact_match
+                else:
+                    # No valid match found
+                    errors.append(f"Corporation '{selected_corp}' not found. Please select from the list.")
+
+        # Transaction type validation
         if not selected_transaction:
             errors.append("Please select a transaction type")
         elif not dept_manager.validate_transaction(user_department, selected_transaction):
-            errors.append(f"Invalid transaction type for {user_department}")
+            errors.append(f"Invalid transaction type '{selected_transaction}' for {user_department}")
         elif dept_manager.has_sub_categories(user_department, selected_transaction) and not selected_sub:
             errors.append(f"Please select a {selected_transaction} type")
         elif selected_sub and not dept_manager.validate_transaction(user_department, selected_transaction,
                                                                     selected_sub):
-            errors.append(f"Invalid sub-category for {selected_transaction}")
+            errors.append(f"Invalid sub-category '{selected_sub}' for {selected_transaction}")
 
-        if not uploaded_by:
+        # Uploaded by validation (excluding placeholder text)
+        if not uploaded_by or uploaded_by == "Enter your name":
             errors.append("Please enter who is uploading the documents")
         elif len(uploaded_by) < 2:
             errors.append("Uploaded by name must be at least 2 characters")
+        elif uploaded_by.isspace():
+            errors.append("Uploaded by cannot be only whitespace")
 
         return errors
 
@@ -491,9 +592,9 @@ def open_head_office_dashboard(next_user_data):
     # Create main window
     popup = tk.Tk()
     popup.title(f"📤 {user_department} - Document Upload")
-    popup.geometry("600x750")
+    popup.geometry("500x750")
     popup.configure(bg=COLORS['light'])
-    popup.resizable(True, False)
+    popup.resizable(False, True)
 
     # Center the window
     popup.update_idletasks()
@@ -564,45 +665,9 @@ def open_head_office_dashboard(next_user_data):
     form_canvas.pack(side="left", fill="both", expand=True)
     form_scrollbar.pack(side="right", fill="y")
 
-    # Corporation section with filtering
-    corp_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
-    corp_section.pack(fill='x', pady=(0, 15), padx=5)
-
-    corp_label = tk.Label(
-        corp_section,
-        text="🏢 Corporation (Type letters to filter)",
-        font=('Segoe UI', 11, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
-        anchor='w'
-    )
-    corp_label.pack(fill='x', padx=15, pady=(15, 5))
-
-    # Get all corporations
+    # Corporation section - Using alternative search method
     all_corporations = dept_manager.get_corporations()
-    
-    corporation_dropdown = ttk.Combobox(
-        corp_section,
-        textvariable=corporation_var,
-        font=('Segoe UI', 10),
-        values=all_corporations,
-        state="normal"  # Changed from readonly to normal to allow typing
-    )
-    corporation_dropdown.pack(fill='x', padx=15, pady=(0, 10))
-    
-    # Setup filtering functionality
-    setup_corporation_filtering(corporation_dropdown, all_corporations, corporation_var)
-    
-    # Helper text for corporation
-    corp_helper_label = tk.Label(
-        corp_section,
-        text="💡 Start typing to filter corporations by first letters (e.g., type 'A' to show all corps starting with 'A')",
-        font=('Segoe UI', 8),
-        bg=COLORS['light'],
-        fg=COLORS['text_light'],
-        anchor='w'
-    )
-    corp_helper_label.pack(fill='x', padx=15, pady=(0, 15))
+    corp_section = create_corporation_section_alternative(form_frame, corporation_var, all_corporations)
 
     # Transaction Type section
     trans_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
@@ -818,7 +883,6 @@ def open_head_office_dashboard(next_user_data):
     upload_btn.pack(side='left', padx=(0, 10))
 
     def logout_and_exit():
-        """Logout and return to login"""
         if messagebox.askyesno("Logout", "Are you sure you want to logout?"):
             popup.destroy()
             try:
@@ -858,7 +922,6 @@ def open_head_office_dashboard(next_user_data):
 
 # Main function to be called from login
 def main(next_user_data):
- 
     try:
         # Validate user data
         if not next_user_data:

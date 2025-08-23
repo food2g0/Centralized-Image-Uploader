@@ -6,18 +6,18 @@ def open_admin_dashboard_group2(admin_data):
     import requests
     from add_user_group2 import open_add_user_popup_group2
     from io import BytesIO
-    from threading import Thread
+    import time
     import datetime
-    from itertools import islice
     from head_office_popup import open_head_office_popup
     from head_office_images import open_head_office_images
     from Colors import COLORS
     from corporations import group2_corporations
-    from notification_system import NotificationSystem  # Import the notification system
+    from notification_system import NotificationSystem
+    import threading
 
     admin = tk.Tk()
     admin.title("Admin Dashboard - Record Management System")
-    admin.state('zoomed')  
+    admin.state('zoomed')
     admin.configure(bg="#f8fafc")
 
     screen_width = admin.winfo_screenwidth()
@@ -42,6 +42,12 @@ def open_admin_dashboard_group2(admin_data):
     # Initialize notification system
     notification_system = NotificationSystem(admin, admin_data)
 
+    # Initialize global variables early to prevent NameError
+    current_loaded_data = []
+    current_context = {"type": None, "value": None}
+    image_refs = []
+    branches = set()
+
     # Responsive ttk styles
     style = ttk.Style()
     style.theme_use('clam')
@@ -56,6 +62,33 @@ def open_admin_dashboard_group2(admin_data):
 
     style.map('Modern.TButton',
               background=[('active', '#2563eb'), ('pressed', '#1d4ed8')])
+
+    # Function to determine file type and return appropriate default icon
+    def get_file_icon(filename):
+        """Return appropriate icon/text based on file extension"""
+        if not filename:
+            return "📄", "Unknown File"
+
+        filename_lower = filename.lower()
+        if filename_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')):
+            return "🖼️", "Image File"
+        elif filename_lower.endswith('.pdf'):
+            return "📄", "PDF Document"
+        elif filename_lower.endswith(('.doc', '.docx')):
+            return "📝", "Word Document"
+        elif filename_lower.endswith(('.xls', '.xlsx')):
+            return "📊", "Excel File"
+        elif filename_lower.endswith('.txt'):
+            return "📃", "Text File"
+        else:
+            return "📄", "Document"
+
+    # Create default image function
+    def create_default_image(icon, file_type, size=(200, 200)):
+        """Create a default image with icon and file type text"""
+        # Create a simple colored background image
+        img = Image.new('RGB', size, color='#f1f5f9')
+        return img
 
     # Responsive sidebar
     sidebar = tk.Frame(admin, width=sidebar_width, bg=COLORS['sidebar'], relief="flat")
@@ -149,53 +182,173 @@ def open_admin_dashboard_group2(admin_data):
     # Make sure the canvas can receive focus for mouse events
     canvas.focus_set()
 
-    def bind_mousewheel_to_main_widgets(widget):
+    def bind_mousewheel_to_main_widgets(widget, visited=None, depth=0):
+        """Safe recursive binding with cycle detection and depth limit"""
+        if visited is None:
+            visited = set()
+
+        # Prevent infinite recursion with depth limit
+        if depth > 50:  # Reasonable maximum depth
+            print(f"[WARNING] Widget binding depth limit reached: {depth}")
+            return
+
+        # Prevent cycles
+        widget_id = id(widget)
+        if widget_id in visited:
+            return
+        visited.add(widget_id)
+
         try:
-            widget.bind("<MouseWheel>", _on_mousewheel)
-            widget.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
-            widget.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
-        except:
+            # Only bind if widget still exists and is valid
+            if widget.winfo_exists():
+                widget.bind("<MouseWheel>", _on_mousewheel)
+                widget.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+                widget.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
+        except (tk.TclError, RuntimeError, AttributeError):
+            # Widget is destroyed or invalid, skip it
+            return
+
+        # Recursively bind children with depth tracking
+        try:
+            children = widget.winfo_children()
+            for child in children:
+                bind_mousewheel_to_main_widgets(child, visited, depth + 1)
+        except (tk.TclError, RuntimeError):
+            # Widget or children are destroyed, skip
             pass
 
-        for child in widget.winfo_children():
-            bind_mousewheel_to_main_widgets(child)
+    # OPTIMIZED FIREBASE DATA LOADING - ON-DEMAND APPROACH
 
-        # Add this at the end of your show_images function, after all widgets are created:
+    def load_branches_only():
+        """Load only unique branches for the sidebar - lightweight query"""
+        print("[DEBUG] Loading branches list...")
+        try:
+            # Get all documents but only fetch branch field to minimize data transfer
+            docs = db.collection("Uploaded_Images").where("corporations", "in", group2_corporations).stream()
 
-        # Ensure scroll wheel works on all main content widgets
-        bind_mousewheel_to_main_widgets(scroll_frame)
+            branches_set = set()
+            doc_count = 0
 
-        # Also bind to the canvas directly for better responsiveness
-        canvas.bind("<Enter>", lambda e: canvas.focus_set())
+            for doc in docs:
+                doc_count += 1
+                if doc_count > 50000:  # Reasonable limit for branch discovery
+                    print(f"[WARNING] Reached document limit while discovering branches")
+                    break
 
-        # Make sure the canvas updates its scroll region
-        scroll_frame.update_idletasks()
-        canvas.configure(scrollregion=canvas.bbox("all"))
+                data = doc.to_dict()
+                if data and "branch" in data:
+                    branch = data.get("branch", "").strip()
+                    if branch:
+                        branches_set.add(branch)
 
-    image_refs = []
+            print(f"[DEBUG] Discovered {len(branches_set)} branches from {doc_count} documents")
+            return sorted(list(branches_set))
 
-    def chunks(iterable, size=10):
-        it = iter(iterable)
-        return iter(lambda: list(islice(it, size)), [])
+        except Exception as e:
+            print(f"[ERROR] Failed to load branches: {e}")
+            return []
 
-    images_by_branch = {}
-    branches = set()
+    def load_branch_data(branch_name):
+        """Load data for a specific branch only"""
+        print(f"[DEBUG] Loading data for branch: {branch_name}")
 
-    for corp_chunk in chunks(group2_corporations, 10):
-        docs = db.collection("Uploaded_Images").where("corporations", "in", corp_chunk).stream()
+        try:
+            # Query only documents for this specific branch
+            docs = db.collection("Uploaded_Images").where("branch", "==", branch_name).stream()
 
-        for doc in docs:
-            data = doc.to_dict()
-            branch = data.get("branch", "Unknown")
-            data["doc_id"] = doc.id
-            branches.add(branch)
-            images_by_branch.setdefault(branch, []).append(data)
+            branch_data = []
+            doc_count = 0
 
-    branches = sorted(branches)
+            for doc in docs:
+                doc_count += 1
+                # Get ALL documents for the selected branch - no limit
+                data = doc.to_dict()
+                if data:
+                    data["doc_id"] = doc.id
+                    branch_data.append(data)
 
+            print(f"[DEBUG] Loaded {len(branch_data)} documents for branch '{branch_name}'")
+            return branch_data
+
+        except Exception as e:
+            print(f"[ERROR] Failed to load branch data for '{branch_name}': {e}")
+            return []
+
+    def load_corporation_data(corporation_name):
+        """Load data for a specific corporation across all branches"""
+        print(f"[DEBUG] Loading data for corporation: {corporation_name}")
+
+        try:
+            # Query only documents for this specific corporation
+            docs = db.collection("Uploaded_Images").where("corporations", "==", corporation_name).stream()
+
+            corp_data = []
+            doc_count = 0
+
+            for doc in docs:
+                doc_count += 1
+                # Get ALL documents for the selected corporation - no limit
+                data = doc.to_dict()
+                if data:
+                    data["doc_id"] = doc.id
+                    corp_data.append(data)
+
+            print(f"[DEBUG] Loaded {len(corp_data)} documents for corporation '{corporation_name}'")
+            return corp_data
+
+        except Exception as e:
+            print(f"[ERROR] Failed to load corporation data for '{corporation_name}': {e}")
+            return []
+
+    # Initialize with lightweight branch loading
+    print("[DEBUG] Initializing with branch discovery...")
+    available_branches = load_branches_only()
+    branches.update(available_branches)
+
+    # IMPROVED REFRESH FUNCTION WITH ON-DEMAND LOADING
     def refresh_data():
-        """Refresh the current view"""
-        show_images(branch=last_branch[0], corporation=last_corporation[0])
+        """Enhanced refresh with on-demand loading"""
+        current_time = time.time()
+
+        # Prevent rapid successive calls
+        if hasattr(refresh_data, '_last_refresh'):
+            if current_time - refresh_data._last_refresh < 2.0:
+                print("[DEBUG] Refresh blocked - too frequent")
+                return
+
+        # Prevent concurrent refreshes
+        if hasattr(refresh_data, '_refreshing') and refresh_data._refreshing:
+            print("[DEBUG] Refresh blocked - already in progress")
+            return
+
+        def do_refresh():
+            try:
+                refresh_data._refreshing = True
+                refresh_data._last_refresh = current_time
+
+                print("[DEBUG] Refreshing current view...")
+
+                # Force reload current data
+                if current_context.get("type") == "branch":
+                    show_images(branch=current_context["value"], force_reload=True)
+                elif current_context.get("type") == "corporation":
+                    show_images(corporation=current_context["value"], force_reload=True)
+                else:
+                    # Refresh branch list if no specific context
+                    nonlocal available_branches
+                    available_branches = load_branches_only()
+                    branches.clear()
+                    branches.update(available_branches)
+                    show_branch_buttons()
+
+            except Exception as e:
+                print(f"[ERROR] Refresh failed: {e}")
+                messagebox.showerror("Refresh Error", f"Failed to refresh data: {str(e)}")
+            finally:
+                refresh_data._refreshing = False
+
+        # Run refresh in separate thread
+        threading.Thread(target=do_refresh, daemon=True).start()
 
     def show_notifications():
         """Show notifications - placeholder function"""
@@ -233,26 +386,85 @@ def open_admin_dashboard_group2(admin_data):
     )
     refresh_btn.pack(side="left")
 
-    # Rest of your existing code remains the same...
-    # [Continue with all the existing functions like show_images, etc.]
+    def show_images(branch=None, corporation=None, force_reload=False):
+        global current_loaded_data, current_context
 
-    def show_images(branch=None, corporation=None):
+        # Ensure variables are properly initialized
+        try:
+            _ = current_context.get("type")
+            len(current_loaded_data)
+        except (NameError, AttributeError):
+            current_loaded_data = []
+            current_context = {"type": None, "value": None}
+
+        # Determine what data we need
+        if corporation:
+            context_key = ("corporation", corporation)
+        elif branch:
+            context_key = ("branch", branch)
+        else:
+            print("[WARNING] No branch or corporation specified")
+            return
+
+        # Check if we need to reload data
+        need_reload = (force_reload or
+                       current_context.get("type") != context_key[0] or
+                       current_context.get("value") != context_key[1] or
+                       len(current_loaded_data) == 0)
+
+        if need_reload:
+            print(f"[DEBUG] Loading new data for {context_key}")
+
+            # Clear existing UI
+            for widget in scroll_frame.winfo_children():
+                widget.destroy()
+            image_refs.clear()
+
+            # Show loading indicator
+            loading_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
+            loading_frame.pack(pady=50, padx=20, fill="x", ipady=30)
+
+            loading_label = tk.Label(
+                loading_frame,
+                text=f"🔄 Loading {context_key[0]}: {context_key[1]}...",
+                font=("Segoe UI", get_font_size(16), "bold"),
+                bg=COLORS['surface'],
+                fg=COLORS['secondary']
+            )
+            loading_label.pack()
+
+            # Update UI to show loading
+            admin.update_idletasks()
+
+            # Load data based on selection
+            if corporation:
+                current_loaded_data = load_corporation_data(corporation)
+            elif branch:
+                current_loaded_data = load_branch_data(branch)
+
+            # Update current context
+            current_context = {"type": context_key[0], "value": context_key[1]}
+
+            # Remove loading indicator
+            loading_frame.destroy()
+
+            print(f"[DEBUG] Loaded {len(current_loaded_data)} documents")
+        else:
+            print(f"[DEBUG] Using cached data for {context_key} ({len(current_loaded_data)} documents)")
+
+        # Clear UI for fresh display
         for widget in scroll_frame.winfo_children():
             widget.destroy()
         image_refs.clear()
+
+        # Use current_loaded_data instead of images_by_branch
+        all_images = current_loaded_data
 
         # Responsive filter frame
         filter_padding = max(12, int(15 * font_scale))
         filter_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
         filter_frame.pack(pady=(filter_padding, int(10 * font_scale)), fill="x",
                           padx=int(20 * font_scale), ipady=int(12 * font_scale))
-
-        if corporation:
-            all_images = []
-            for imgs in images_by_branch.values():
-                all_images.extend([img for img in imgs if img.get("corporations", "").strip().upper() == corporation])
-        else:
-            all_images = images_by_branch.get(branch, [])
 
         transaction_types = sorted(
             set(img.get("transaction_type", "") for img in all_images if img.get("transaction_type")))
@@ -483,13 +695,18 @@ def open_admin_dashboard_group2(admin_data):
             for img in filtered_images:
                 if img["doc_id"] in selected_images:
                     try:
-                        url = img.get("image_url")
-                        fname = img.get("filename", "image.jpg")
-                        response = requests.get(url, timeout=10)
-                        if response.status_code == 200:
-                            with open(f"{folder}/{fname}", "wb") as f:
-                                f.write(response.content)
-                            success += 1
+                        # Handle both image_url (legacy) and file_url (new)
+                        url = img.get("file_url") or img.get("image_url")
+                        fname = img.get("filename", "document")
+
+                        if url:
+                            response = requests.get(url, timeout=10)
+                            if response.status_code == 200:
+                                with open(f"{folder}/{fname}", "wb") as f:
+                                    f.write(response.content)
+                                success += 1
+                            else:
+                                failed += 1
                         else:
                             failed += 1
                     except:
@@ -502,7 +719,7 @@ def open_admin_dashboard_group2(admin_data):
                 return
 
             confirm = messagebox.askyesno("Confirm Delete",
-                                          f"Are you sure you want to delete {len(selected_images)} selected images?")
+                                          f"Are you sure you want to delete {len(selected_images)} selected files?")
             if not confirm:
                 return
 
@@ -524,9 +741,9 @@ def open_admin_dashboard_group2(admin_data):
 
                     db.collection("Uploaded_Images").document(doc_data["doc_id"]).delete()
 
-                    if branch in images_by_branch:
-                        images_by_branch[branch] = [i for i in images_by_branch[branch] if
-                                                    i["doc_id"] != doc_data["doc_id"]]
+                    # Remove from current loaded data
+                    if doc_data in current_loaded_data:
+                        current_loaded_data.remove(doc_data)
                     if doc_data in filtered_images:
                         filtered_images.remove(doc_data)
                     selected_images.discard(doc_data["doc_id"])
@@ -535,7 +752,8 @@ def open_admin_dashboard_group2(admin_data):
                     print(f"🔥 Failed to delete {filename}: {err}")
                     failed += 1
 
-            filtered_images[:] = [img for img in images_by_branch.get(branch, []) if matches(img)]
+            # Update filtered images
+            filtered_images[:] = [img for img in current_loaded_data if matches(img)]
             current_page[0] = 0
             display_images_page()
             messagebox.showinfo("Delete Complete", f"Deleted: {success}, Failed: {failed}")
@@ -577,40 +795,69 @@ def open_admin_dashboard_group2(admin_data):
 
             return True
 
-        def apply_filters(*args):
-            ttype = trans_type_var.get().strip().lower()
-            start_val = clean_date(start_date_var.get().strip())
-            end_val = clean_date(end_date_var.get().strip())
+        # IMPROVED FILTER APPLICATION WITH DEBOUNCING
+        def create_debounced_filter():
+            """Create a debounced filter function to prevent excessive calls"""
+            filter_timer = [None]
 
-            start_date = datetime.datetime.strptime(start_val, "%Y-%m-%d") if start_val else None
-            end_date = datetime.datetime.strptime(end_val, "%Y-%m-%d") if end_val else None
+            def debounced_apply_filters(*args):
+                # Cancel previous timer if exists
+                if filter_timer[0]:
+                    admin.after_cancel(filter_timer[0])
 
-            filtered = list(filter(matches, all_images))
+                # Set new timer for delayed execution
+                filter_timer[0] = admin.after(300, actual_apply_filters)  # 300ms delay
 
-            def get_img_timestamp(img):
-                ts = img.get("timestamp", "")
+            def actual_apply_filters():
+                """The actual filter function that does the work"""
                 try:
-                    return datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                except Exception:
-                    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S",
-                                "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+                    filter_timer[0] = None  # Clear timer reference
+
+                    ttype = trans_type_var.get().strip().lower()
+                    start_val = clean_date(start_date_var.get().strip())
+                    end_val = clean_date(end_date_var.get().strip())
+
+                    # Validate dates
+                    start_date = None
+                    end_date = None
+
+                    if start_val:
                         try:
-                            return datetime.datetime.strptime(ts, fmt)
-                        except:
-                            continue
-                date_str = clean_date(img.get("date", ""))
-                try:
-                    return datetime.datetime.strptime(date_str, "%Y-%m-%d")
-                except:
-                    return datetime.datetime.min
+                            start_date = datetime.datetime.strptime(start_val, "%Y-%m-%d")
+                        except ValueError:
+                            print(f"[WARNING] Invalid start date: {start_val}")
 
-            filtered.sort(key=get_img_timestamp)
-            print(f"[DEBUG] {len(filtered)} matched images")
+                    if end_val:
+                        try:
+                            end_date = datetime.datetime.strptime(end_val, "%Y-%m-%d")
+                        except ValueError:
+                            print(f"[WARNING] Invalid end date: {end_val}")
 
-            filtered_images.clear()
-            filtered_images.extend(filtered)
-            current_page[0] = 0
-            display_images_page()
+                    # Apply filters with progress indication
+                    filtered = []
+                    total_images = len(all_images)
+
+                    for i, img in enumerate(all_images):
+                        if i % 100 == 0 and i > 0:  # Progress indication every 100 items
+                            print(f"[DEBUG] Filtering progress: {i}/{total_images}")
+
+                        if matches(img):
+                            filtered.append(img)
+
+
+                    # Update UI
+                    filtered_images.clear()
+                    filtered_images.extend(filtered)
+                    current_page[0] = 0
+                    display_images_page()
+
+                except Exception as e:
+                    print(f"[ERROR] Filter application failed: {e}")
+                    messagebox.showerror("Filter Error", f"Failed to apply filters: {str(e)}")
+
+            return debounced_apply_filters
+
+        apply_filters = create_debounced_filter()
 
         def on_filename_search_change(*args):
             current_search = filename_search_var.get().strip()
@@ -623,7 +870,7 @@ def open_admin_dashboard_group2(admin_data):
 
         def download_all_images():
             if not filtered_images:
-                messagebox.showinfo("No Images", "No filtered images to download.")
+                messagebox.showinfo("No Files", "No filtered files to download.")
                 return
 
             folder = filedialog.askdirectory(title="Select Download Folder")
@@ -633,13 +880,18 @@ def open_admin_dashboard_group2(admin_data):
             success, failed = 0, 0
             for img in filtered_images:
                 try:
-                    url = img.get("image_url")
-                    fname = img.get("filename", "image.jpg")
-                    response = requests.get(url, timeout=10)
-                    if response.status_code == 200:
-                        with open(f"{folder}/{fname}", "wb") as f:
-                            f.write(response.content)
-                        success += 1
+                    # Handle both image_url (legacy) and file_url (new)
+                    url = img.get("file_url") or img.get("image_url")
+                    fname = img.get("filename", "document")
+
+                    if url:
+                        response = requests.get(url, timeout=10)
+                        if response.status_code == 200:
+                            with open(f"{folder}/{fname}", "wb") as f:
+                                f.write(response.content)
+                            success += 1
+                        else:
+                            failed += 1
                     else:
                         failed += 1
                 except:
@@ -669,7 +921,7 @@ def open_admin_dashboard_group2(admin_data):
 
                 tk.Label(
                     search_info_frame,
-                    text=f"🔍 Search results for '{search_query}': {results_count} images found",
+                    text=f"🔍 Search results for '{search_query}': {results_count} files found",
                     font=("Segoe UI", get_font_size(11), "bold"),
                     bg=COLORS['surface'],
                     fg=COLORS['secondary']
@@ -723,7 +975,7 @@ def open_admin_dashboard_group2(admin_data):
                     ).pack()
                     tk.Label(
                         no_images_frame,
-                        text=f"No images found with filename containing: '{filename_search_var.get().strip()}'",
+                        text=f"No files found with filename containing: '{filename_search_var.get().strip()}'",
                         font=("Segoe UI", get_font_size(12)),
                         fg=COLORS['muted'],
                         bg=COLORS['surface']
@@ -731,7 +983,7 @@ def open_admin_dashboard_group2(admin_data):
                 else:
                     tk.Label(
                         no_images_frame,
-                        text="📁 No images found",
+                        text="📁 No files found",
                         font=("Segoe UI", get_font_size(16), "bold"),
                         fg=COLORS['muted'],
                         bg=COLORS['surface']
@@ -745,9 +997,17 @@ def open_admin_dashboard_group2(admin_data):
                     ).pack(pady=(int(5 * font_scale), 0))
                 return
 
-            def view_full_image(img_data):
+            def view_full_file(file_data):
+                """Enhanced file viewer that handles different file types"""
+                filename = file_data.get('filename', 'Unknown File')
+                file_url = file_data.get("file_url") or file_data.get("image_url")
+
+                if not file_url:
+                    messagebox.showerror("Error", "No file URL available")
+                    return
+
                 top = tk.Toplevel(admin)
-                top.title(f"📷 {img_data.get('filename', 'Image')}")
+                top.title(f"📄 {filename}")
 
                 # Responsive popup size
                 popup_width = max(800, min(1200, int(screen_width * 0.8)))
@@ -755,91 +1015,212 @@ def open_admin_dashboard_group2(admin_data):
                 top.geometry(f"{popup_width}x{popup_height}")
                 top.configure(bg=COLORS['background'])
 
-                try:
-                    response = requests.get(img_data["image_url"], timeout=10)
-                    image_data = BytesIO(response.content)
-                    pil_image = Image.open(image_data).convert("RGB")
-                except Exception as e:
-                    tk.Label(top, text=f"❌ Failed to load image: {e}", bg=COLORS['background'], fg=COLORS['danger'],
-                             font=("Segoe UI", get_font_size(12))).pack(pady=50)
-                    return
+                # Check if it's an image file
+                is_image = filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'))
 
-                canvas_popup = tk.Canvas(top, bg=COLORS['surface'], highlightthickness=0, bd=0)
-                canvas_popup.pack(fill="both", expand=True, padx=int(20 * font_scale),
-                            pady=(int(20 * font_scale), int(10 * font_scale)))
+                if is_image:
+                    # Handle image files
+                    try:
+                        response = requests.get(file_url, timeout=10)
+                        if response.status_code == 200:
+                            image_data = BytesIO(response.content)
+                            pil_image = Image.open(image_data).convert("RGB")
 
-                zoom_factor = [1.0]
-                base_image = pil_image
+                            canvas_popup = tk.Canvas(top, bg=COLORS['surface'], highlightthickness=0, bd=0)
+                            canvas_popup.pack(fill="both", expand=True, padx=int(20 * font_scale),
+                                              pady=(int(20 * font_scale), int(10 * font_scale)))
 
-                def render_image():
-                    new_size = (int(base_image.width * zoom_factor[0]), int(base_image.height * zoom_factor[0]))
-                    resized_img = base_image.resize(new_size, Image.LANCZOS)
-                    tk_image = ImageTk.PhotoImage(resized_img, master=top)
+                            zoom_factor = [1.0]
+                            base_image = pil_image
 
-                    canvas_popup.delete("IMG")
-                    canvas_popup.image_id = canvas_popup.create_image(canvas_popup.winfo_width() // 2, canvas_popup.winfo_height() // 2,
-                                                          anchor="center", image=tk_image, tags="IMG")
-                    canvas_popup.image = tk_image
+                            def render_image():
+                                new_size = (int(base_image.width * zoom_factor[0]),
+                                            int(base_image.height * zoom_factor[0]))
+                                resized_img = base_image.resize(new_size, Image.LANCZOS)
+                                tk_image = ImageTk.PhotoImage(resized_img, master=top)
 
-                def zoom(event):
-                    if event.delta > 0 or event.num == 4:
-                        zoom_factor[0] *= 1.1
-                    elif event.delta < 0 or event.num == 5:
-                        zoom_factor[0] /= 1.1
-                    render_image()
+                                canvas_popup.delete("IMG")
+                                canvas_popup.image_id = canvas_popup.create_image(canvas_popup.winfo_width() // 2,
+                                                                                  canvas_popup.winfo_height() // 2,
+                                                                                  anchor="center", image=tk_image,
+                                                                                  tags="IMG")
+                                canvas_popup.image = tk_image
 
-                drag_data = {"x": 0, "y": 0}
+                            def zoom(event):
+                                if event.delta > 0 or event.num == 4:
+                                    zoom_factor[0] *= 1.1
+                                elif event.delta < 0 or event.num == 5:
+                                    zoom_factor[0] /= 1.1
+                                render_image()
 
-                def start_drag(event):
-                    drag_data["x"] = event.x
-                    drag_data["y"] = event.y
+                            drag_data = {"x": 0, "y": 0}
 
-                def do_drag(event):
-                    dx = event.x - drag_data["x"]
-                    dy = event.y - drag_data["y"]
-                    canvas_popup.move("IMG", dx, dy)
-                    drag_data["x"] = event.x
-                    drag_data["y"] = event.y
+                            def start_drag(event):
+                                drag_data["x"] = event.x
+                                drag_data["y"] = event.y
 
-                canvas_popup.bind("<MouseWheel>", zoom)
-                canvas_popup.bind("<Button-4>", zoom)
-                canvas_popup.bind("<Button-5>", zoom)
-                canvas_popup.bind("<ButtonPress-1>", start_drag)
-                canvas_popup.bind("<B1-Motion>", do_drag)
+                            def do_drag(event):
+                                dx = event.x - drag_data["x"]
+                                dy = event.y - drag_data["y"]
+                                canvas_popup.move("IMG", dx, dy)
+                                drag_data["x"] = event.x
+                                drag_data["y"] = event.y
 
-                # Responsive zoom controls
-                zoom_frame = tk.Frame(top, bg=COLORS['surface'], relief="flat", bd=1)
-                zoom_frame.pack(fill="x", side="bottom", pady=(0, int(20 * font_scale)),
-                                padx=int(20 * font_scale), ipady=int(8 * font_scale))
+                            canvas_popup.bind("<MouseWheel>", zoom)
+                            canvas_popup.bind("<Button-4>", zoom)
+                            canvas_popup.bind("<Button-5>", zoom)
+                            canvas_popup.bind("<ButtonPress-1>", start_drag)
+                            canvas_popup.bind("<B1-Motion>", do_drag)
 
-                zoom_btn_style = {
-                    'font': ("Segoe UI", get_font_size(10), "bold"),
-                    'bd': 0,
-                    'relief': "flat",
-                    'cursor': "hand2",
-                    'padx': int(20 * font_scale),
-                    'pady': int(8 * font_scale)
-                }
+                            # Responsive zoom controls
+                            zoom_frame = tk.Frame(top, bg=COLORS['surface'], relief="flat", bd=1)
+                            zoom_frame.pack(fill="x", side="bottom", pady=(0, int(20 * font_scale)),
+                                            padx=int(20 * font_scale), ipady=int(8 * font_scale))
 
-                tk.Button(
-                    zoom_frame,
-                    text="🔍+ Zoom In",
-                    bg=COLORS['secondary'],
-                    fg="white",
-                    command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] * 1.1), render_image()],
-                    **zoom_btn_style
-                ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
+                            zoom_btn_style = {
+                                'font': ("Segoe UI", get_font_size(10), "bold"),
+                                'bd': 0,
+                                'relief': "flat",
+                                'cursor': "hand2",
+                                'padx': int(20 * font_scale),
+                                'pady': int(8 * font_scale)
+                            }
 
-                tk.Button(
-                    zoom_frame,
-                    text="🔍- Zoom Out",
-                    bg=COLORS['muted'],
-                    fg="white",
-                    command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] / 1.1), render_image()],
-                    **zoom_btn_style
-                ).pack(side="left", padx=int(5 * font_scale))
+                            tk.Button(
+                                zoom_frame,
+                                text="🔍+ Zoom In",
+                                bg=COLORS['secondary'],
+                                fg="white",
+                                command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] * 1.1), render_image()],
+                                **zoom_btn_style
+                            ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
 
-                render_image()
+                            tk.Button(
+                                zoom_frame,
+                                text="🔍- Zoom Out",
+                                bg=COLORS['muted'],
+                                fg="white",
+                                command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] / 1.1), render_image()],
+                                **zoom_btn_style
+                            ).pack(side="left", padx=int(5 * font_scale))
+
+                            render_image()
+                        else:
+                            tk.Label(top, text="❌ Failed to load image", bg=COLORS['background'], fg=COLORS['danger'],
+                                     font=("Segoe UI", get_font_size(12))).pack(pady=50)
+                    except Exception as e:
+                        tk.Label(top, text=f"❌ Failed to load image: {e}", bg=COLORS['background'], fg=COLORS['danger'],
+                                 font=("Segoe UI", get_font_size(12))).pack(pady=50)
+                else:
+                    # Handle non-image files (PDF, DOCX, etc.)
+                    info_frame = tk.Frame(top, bg=COLORS['background'])
+                    info_frame.pack(fill="both", expand=True, padx=int(40 * font_scale), pady=int(40 * font_scale))
+
+                    # File icon and info
+                    icon, file_type = get_file_icon(filename)
+
+                    tk.Label(
+                        info_frame,
+                        text=icon,
+                        font=("Segoe UI", get_font_size(48)),
+                        bg=COLORS['background'],
+                        fg=COLORS['secondary']
+                    ).pack(pady=(0, int(20 * font_scale)))
+
+                    tk.Label(
+                        info_frame,
+                        text=file_type,
+                        font=("Segoe UI", get_font_size(18), "bold"),
+                        bg=COLORS['background'],
+                        fg=COLORS['text']
+                    ).pack(pady=(0, int(10 * font_scale)))
+
+                    tk.Label(
+                        info_frame,
+                        text=filename,
+                        font=("Segoe UI", get_font_size(14)),
+                        bg=COLORS['background'],
+                        fg=COLORS['muted'],
+                        wraplength=int(400 * font_scale)
+                    ).pack(pady=(0, int(30 * font_scale)))
+
+                    # Download button for non-image files
+                    def download_file():
+                        try:
+                            file_path = filedialog.asksaveasfilename(
+                                defaultextension="",
+                                initialname=filename,
+                                title="Save File As"
+                            )
+                            if file_path:
+                                response = requests.get(file_url, timeout=30)
+                                if response.status_code == 200:
+                                    with open(file_path, 'wb') as f:
+                                        f.write(response.content)
+                                    messagebox.showinfo("Success", f"File downloaded successfully to:\n{file_path}")
+                                else:
+                                    messagebox.showerror("Error", "Failed to download file")
+                        except Exception as e:
+                            messagebox.showerror("Error", f"Download failed: {e}")
+
+                    tk.Button(
+                        info_frame,
+                        text="📥 Download File",
+                        font=("Segoe UI", get_font_size(12), "bold"),
+                        bg=COLORS['success'],
+                        fg="white",
+                        bd=0,
+                        relief="flat",
+                        cursor="hand2",
+                        padx=int(30 * font_scale),
+                        pady=int(12 * font_scale),
+                        command=download_file
+                    ).pack(pady=int(10 * font_scale))
+
+                    # File details
+                    details_frame = tk.Frame(info_frame, bg=COLORS['surface'], relief="flat", bd=1)
+                    details_frame.pack(fill="x", pady=int(20 * font_scale), ipady=int(15 * font_scale))
+
+                    tk.Label(
+                        details_frame,
+                        text="📋 File Details",
+                        font=("Segoe UI", get_font_size(14), "bold"),
+                        bg=COLORS['surface'],
+                        fg=COLORS['text']
+                    ).pack(pady=(0, int(10 * font_scale)))
+
+                    # Display file metadata
+                    details_info = [
+                        ("📄 Filename", filename),
+                        ("🏢 Branch", file_data.get("branch", "N/A")),
+                        ("👤 Uploaded By", file_data.get("uploaded_by", "N/A")),
+                        ("📅 Transaction Date", file_data.get("date", "N/A")),
+                        ("💼 Transaction Type", file_data.get("transaction_type", "N/A")),
+                    ]
+
+                    for label, value in details_info:
+                        detail_row = tk.Frame(details_frame, bg=COLORS['surface'])
+                        detail_row.pack(fill="x", padx=int(20 * font_scale), pady=int(3 * font_scale))
+
+                        tk.Label(
+                            detail_row,
+                            text=f"{label}:",
+                            font=("Segoe UI", get_font_size(11), "bold"),
+                            bg=COLORS['surface'],
+                            fg=COLORS['text'],
+                            width=18,
+                            anchor="w"
+                        ).pack(side="left")
+
+                        tk.Label(
+                            detail_row,
+                            text=str(value),
+                            font=("Segoe UI", get_font_size(11)),
+                            bg=COLORS['surface'],
+                            fg=COLORS['muted'],
+                            anchor="w",
+                            wraplength=int(300 * font_scale)
+                        ).pack(side="left", fill="x", expand=True)
 
             def format_timestamp(ts):
                 import datetime
@@ -859,36 +1240,54 @@ def open_admin_dashboard_group2(admin_data):
                             continue
                 return ts
 
-            def load_image_async(img_data, img_label):
+            def get_img_timestamp(img):
+                ts = img.get("timestamp", "")
                 try:
-                    url = img_data["image_url"]
-                    response = requests.get(url, timeout=10)
+                    return datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                except Exception:
+                    for fmt in ("%Y-%m-%dT%H:%M:%S.%f%z", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S",
+                                "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+                        try:
+                            return datetime.datetime.strptime(ts, fmt)
+                        except:
+                            continue
+                date_str = clean_date(img.get("date", ""))
+                try:
+                    return datetime.datetime.strptime(date_str, "%Y-%m-%d")
+                except:
+                    return datetime.datetime.min
 
-                    if response.status_code == 200 and 'image' in response.headers.get('Content-Type', ''):
-                        image_data = BytesIO(response.content)
-                        pil_img = Image.open(image_data).convert("RGB")
+            # Modified create_default_icon function - no async loading needed
+            def create_default_icon(file_data, img_label):
+                """Create and display default icon immediately"""
+                filename = file_data.get("filename", "")
+                icon, file_type = get_file_icon(filename)
 
-                        # Responsive thumbnail size
-                        thumb_size = max(150, min(250, int(200 * font_scale)))
-                        pil_img.thumbnail((thumb_size, thumb_size))
-                        photo = ImageTk.PhotoImage(pil_img, master=admin)
+                # Create a simple icon display
+                img_label.config(
+                    text=f"{icon}\n{file_type}",
+                    font=("Segoe UI", get_font_size(12), "bold"),
+                    fg=COLORS['secondary'],
+                    bg=COLORS['surface'],
+                    justify="center",
+                    compound="top"
+                )
 
-                        def update_ui():
-                            img_label.config(image=photo, text="", bg=COLORS['surface'])
-                            img_label.image = photo
-                            image_refs.append(photo)
-                            img_label.bind("<Button-1>", lambda e, data=img_data: view_full_image(data))
+                # Make it clickable
+                img_label.bind("<Button-1>", lambda e, data=file_data: view_full_file(data))
 
-                        admin.after(0, update_ui)
-                    else:
-                        admin.after(0, lambda: img_label.config(text="❌ Not an image", fg=COLORS['danger'],
-                                                                bg=COLORS['surface']))
-                except Exception as e:
-                    admin.after(0, lambda: img_label.config(text="❌ Failed to load", fg=COLORS['danger'],
-                                                            bg=COLORS['surface']))
+                # Hover effects
+                def on_enter(e):
+                    img_label.config(bg="#f1f5f9")
 
-            # Responsive image cards
-            for img in page_images:
+                def on_leave(e):
+                    img_label.config(bg=COLORS['surface'])
+
+                img_label.bind("<Enter>", on_enter)
+                img_label.bind("<Leave>", on_leave)
+
+            # Responsive file cards
+            for file_data in page_images:
                 card_padding = max(15, int(20 * font_scale))
                 card_frame = tk.Frame(
                     scroll_frame,
@@ -902,40 +1301,33 @@ def open_admin_dashboard_group2(admin_data):
                                 ipadx=card_padding, ipady=card_padding)
                 card_frame.grid_columnconfigure(1, weight=1)
 
-                # Responsive image preview
+                # Responsive file preview with default icon
                 img_width = max(20, int(24 * font_scale))
                 img_height = max(8, int(10 * font_scale))
 
                 img_label = tk.Label(
                     card_frame,
                     bg=COLORS['surface'],
-                    text="📷 Loading...",
-                    font=("Segoe UI", get_font_size(11), "italic"),
+                    text="📄\nLoading...",
+                    font=("Segoe UI", get_font_size(11)),
                     fg=COLORS['muted'],
                     width=img_width,
                     height=img_height,
                     borderwidth=0,
-                    relief="flat"
+                    relief="flat",
+                    justify="center"
                 )
                 img_label.grid(row=0, column=0, padx=int(15 * font_scale), pady=int(10 * font_scale), sticky="nw")
 
-                def on_enter(e, lbl=img_label):
-                    lbl.config(bg="#f1f5f9")
-
-                def on_leave(e, lbl=img_label):
-                    lbl.config(bg=COLORS['surface'])
-
-                img_label.bind("<Enter>", on_enter)
-                img_label.bind("<Leave>", on_leave)
-
-                Thread(target=load_image_async, args=(img, img_label), daemon=True).start()
+                # Immediately create default icon (no async loading)
+                create_default_icon(file_data, img_label)
 
                 # Responsive info section
                 info_frame = tk.Frame(card_frame, bg=COLORS['surface'])
                 info_frame.grid(row=0, column=1, padx=int(15 * font_scale), sticky="nsew")
 
                 # Enhanced filename display with search highlighting
-                filename_text = img.get("filename", "")
+                filename_text = file_data.get("filename", "")
                 search_query = filename_search_var.get().strip().lower()
                 if search_query and search_query != "type filename here..." and search_query in filename_text.lower():
                     filename_display = f"📄 {filename_text} ⭐"
@@ -947,11 +1339,11 @@ def open_admin_dashboard_group2(admin_data):
                 # Responsive info data
                 info_data = [
                     ("📄 File", filename_display, filename_color),
-                    ("🏢 Branch", img.get("branch", ""), COLORS['muted']),
-                    ("👤 Uploaded By", img.get("uploaded_by", ""), COLORS['muted']),
-                    ("📅 Transaction Date", img.get("date", ""), COLORS['muted']),
-                    ("💼 Transaction Type", img.get("transaction_type", ""), COLORS['muted']),
-                    ("⏰ Date Uploaded", format_timestamp(img.get("timestamp", "")), COLORS['muted']),
+                    ("🏢 Branch", file_data.get("branch", ""), COLORS['muted']),
+                    ("👤 Uploaded By", file_data.get("uploaded_by", ""), COLORS['muted']),
+                    ("📅 Transaction Date", file_data.get("date", ""), COLORS['muted']),
+                    ("💼 Transaction Type", file_data.get("transaction_type", ""), COLORS['muted']),
+                    ("⏰ Date Uploaded", format_timestamp(file_data.get("timestamp", "")), COLORS['muted']),
                 ]
 
                 for label, val, text_color in info_data:
@@ -987,12 +1379,12 @@ def open_admin_dashboard_group2(admin_data):
                 actions_frame.grid(row=0, column=2, padx=int(15 * font_scale), pady=int(10 * font_scale), sticky="ne")
 
                 # Responsive checkbox
-                select_var = tk.BooleanVar(value=img["doc_id"] in selected_images)
+                select_var = tk.BooleanVar(value=file_data["doc_id"] in selected_images)
                 cb = tk.Checkbutton(
                     actions_frame,
                     text="Select",
                     variable=select_var,
-                    command=lambda doc_id=img["doc_id"], var=select_var: on_select(doc_id, var),
+                    command=lambda doc_id=file_data["doc_id"], var=select_var: on_select(doc_id, var),
                     bg=COLORS['surface'],
                     fg=COLORS['text'],
                     font=("Segoe UI", get_font_size(10), "bold"),
@@ -1019,7 +1411,7 @@ def open_admin_dashboard_group2(admin_data):
                     cursor="hand2",
                     padx=view_btn_padding_x,
                     pady=view_btn_padding_y,
-                    command=lambda data=img: view_full_image(data)
+                    command=lambda data=file_data: view_full_file(data)
                 )
                 view_btn.pack()
 
@@ -1128,9 +1520,20 @@ def open_admin_dashboard_group2(admin_data):
             command=clear_filename_search
         ).pack(side="left", padx=int(5 * font_scale))
 
+        # Initialize filtered images with all loaded data
         filtered_images.clear()
         filtered_images.extend(all_images)
         display_images_page()
+
+        # Ensure scroll wheel works on all main content widgets
+        bind_mousewheel_to_main_widgets(scroll_frame)
+
+        # Also bind to the canvas directly for better responsiveness
+        canvas.bind("<Enter>", lambda e: canvas.focus_set())
+
+        # Make sure the canvas updates its scroll region
+        scroll_frame.update_idletasks()
+        canvas.configure(scrollregion=canvas.bbox("all"))
 
     # Responsive Sidebar Design
     group_name = admin_data.get("group", "Unknown Group")
@@ -1157,9 +1560,9 @@ def open_admin_dashboard_group2(admin_data):
         fg=COLORS['accent']
     ).pack()
 
-    # Responsive scrollable branches container - REDUCED HEIGHT
-    available_height = screen_height - 200  # Account for header, search, buttons, footer
-    branches_container_height = max(150, min(300, int(available_height * 0.4)))  # More conservative
+    # Responsive scrollable branches container
+    available_height = screen_height - 200
+    branches_container_height = max(150, min(300, int(available_height * 0.4)))
 
     branches_main_frame = tk.Frame(sidebar, bg=COLORS['sidebar'])
     branches_main_frame.pack(fill="both", expand=True, padx=int(5 * font_scale), pady=(0, int(5 * font_scale)))
@@ -1193,13 +1596,8 @@ def open_admin_dashboard_group2(admin_data):
         branches_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     branches_canvas.bind("<MouseWheel>", _on_branches_mousewheel)
-    branches_canvas.bind("<Button-4>", _on_branches_mousewheel)  # Linux wheel up
-    branches_canvas.bind("<Button-5>", _on_branches_mousewheel)  # Linux wheel down
-
-    def bind_mousewheel_recursive(widget):
-        widget.bind("<MouseWheel>", _on_branches_mousewheel)
-        for child in widget.winfo_children():
-            bind_mousewheel_recursive(child)
+    branches_canvas.bind("<Button-4>", _on_branches_mousewheel)
+    branches_canvas.bind("<Button-5>", _on_branches_mousewheel)
 
     # Initialize variables for the sidebar components
     search_var = tk.StringVar()
@@ -1266,13 +1664,13 @@ def open_admin_dashboard_group2(admin_data):
                 popup.destroy()
                 last_branch[0] = None
                 last_corporation[0] = selected
-                show_images(branch=None, corporation=selected)
+                show_images(corporation=selected)
             else:
                 messagebox.showwarning("Select Corporation", "Please select a corporation.")
 
         tk.Button(
             content_frame,
-            text="📊 Show Images",
+            text="📊 Show Files",
             font=("Segoe UI", get_font_size(11), "bold"),
             bg=COLORS['success'],
             fg="white",
@@ -1283,8 +1681,6 @@ def open_admin_dashboard_group2(admin_data):
             pady=int(10 * font_scale),
             command=on_confirm
         ).pack()
-
-    # FIXED SIDEBAR LAYOUT - Replace the old search_section and button_frame with this:
 
     # Create a proper container for all bottom elements
     bottom_container = tk.Frame(sidebar, bg=COLORS['sidebar'])
@@ -1331,11 +1727,9 @@ def open_admin_dashboard_group2(admin_data):
     def on_corp_selected(*args):
         selected_corp = selected_corp_var.get()
         if selected_corp and selected_corp != "Select Corporation":
-            filtered_branches = sorted([
-                branch for branch, imgs in images_by_branch.items()
-                if any(img.get("corporations", "").strip().upper() == selected_corp for img in imgs)
-            ])
-            show_branch_buttons(filtered_branches)
+            # Filter branches that have documents for this corporation
+            # This would require a more complex query, but for now we'll show all branches
+            show_branch_buttons(sorted(branches))
 
     corp_dropdown = tk.OptionMenu(corp_section, selected_corp_var, *corp_list, command=lambda _: on_corp_selected())
     dropdown_width = max(16, int(20 * font_scale))
@@ -1369,7 +1763,7 @@ def open_admin_dashboard_group2(admin_data):
         'relief': "flat",
         'cursor': "hand2",
         'width': button_width,
-        'pady': int(6 * font_scale)  # Reduced padding
+        'pady': int(6 * font_scale)
     }
 
     tk.Button(
@@ -1379,7 +1773,7 @@ def open_admin_dashboard_group2(admin_data):
         bg=COLORS['secondary'],
         fg="white",
         **action_btn_style
-    ).pack(pady=int(3 * font_scale), fill="x")  # Reduced pady
+    ).pack(pady=int(3 * font_scale), fill="x")
 
     def logout():
         admin.destroy()
@@ -1450,7 +1844,7 @@ def open_admin_dashboard_group2(admin_data):
 
         # Hover effects for upload button
         def on_upload_enter(e):
-            upload_btn.config(bg='#059669')  # Darker green
+            upload_btn.config(bg='#059669')
 
         def on_upload_leave(e):
             upload_btn.config(bg=COLORS['success'])
@@ -1476,7 +1870,7 @@ def open_admin_dashboard_group2(admin_data):
 
         # Hover effects for view button
         def on_view_enter(e):
-            view_btn.config(bg='#2563eb')  # Darker blue
+            view_btn.config(bg='#2563eb')
 
         def on_view_leave(e):
             view_btn.config(bg=COLORS['secondary'])
@@ -1564,18 +1958,28 @@ def open_admin_dashboard_group2(admin_data):
     def update_branch_search(*args):
         query = search_var.get().strip().lower()
         if query:
-            filtered = [branch for branch in branches if query in branch.lower()]
+            filtered = [branch for branch in sorted(branches) if query in branch.lower()]
         else:
-            filtered = branches
+            filtered = sorted(branches)
         show_branch_buttons(filtered)
 
     search_var.trace_add("write", update_branch_search)
+
+    def create_branch_button_handler(branch_name):
+        """Create a handler for branch button clicks with proper loading"""
+
+        def handler():
+            last_branch[0] = branch_name
+            last_corporation[0] = None
+            show_images(branch=branch_name)
+
+        return handler
 
     def show_branch_buttons(filtered=None):
         for widget in branches_frame.winfo_children():
             widget.destroy()
 
-        show_list = filtered if filtered is not None else branches
+        show_list = filtered if filtered is not None else sorted(branches)
 
         branch_btn_style = {
             'font': ("Segoe UI", get_font_size(10), "bold"),
@@ -1585,15 +1989,14 @@ def open_admin_dashboard_group2(admin_data):
             'relief': "flat",
             'cursor': "hand2",
             'width': button_width,
-            'pady': int(6 * font_scale)  # Reduced padding
+            'pady': int(6 * font_scale)
         }
 
         for branch in show_list:
             btn = tk.Button(
                 branches_frame,
                 text=f"📂 {branch}",
-                command=lambda b=branch: [last_branch.__setitem__(0, b), last_corporation.__setitem__(0, None),
-                                          show_images(branch=b)],
+                command=create_branch_button_handler(branch),  # Use the new handler
                 **branch_btn_style
             )
             btn.pack(pady=2, padx=int(15 * font_scale), fill="x")
@@ -1610,24 +2013,94 @@ def open_admin_dashboard_group2(admin_data):
 
         branches_frame.update_idletasks()
         branches_canvas.configure(scrollregion=branches_canvas.bbox("all"))
-        bind_mousewheel_recursive(branches_frame)
+
+    # IMPROVED WINDOW RESIZE HANDLER WITH DEBOUNCING
+    def create_resize_handler():
+        """Create debounced window resize handler"""
+        resize_timer = [None]
+        last_size = [None, None]
+
+        def on_window_resize(event):
+            if event.widget != admin:
+                return
+
+            current_width = admin.winfo_width()
+            current_height = admin.winfo_height()
+
+            # Only process significant size changes
+            if (last_size[0] is None or
+                    abs(current_width - last_size[0]) > 50 or
+                    abs(current_height - last_size[1]) > 50):
+
+                # Cancel previous resize timer
+                if resize_timer[0]:
+                    admin.after_cancel(resize_timer[0])
+
+                # Set new timer for delayed resize handling
+                resize_timer[0] = admin.after(500, lambda: handle_resize(current_width, current_height))
+
+        def handle_resize(width, height):
+            """Handle the actual resize logic"""
+            try:
+                resize_timer[0] = None
+                last_size[0] = width
+                last_size[1] = height
+
+                print(f"[DEBUG] Window resized to {width}x{height}")
+
+                # Update scaling factors
+                new_scale = min(width / 1920, height / 1080)
+
+                # Only refresh if significant scale change
+                if abs(new_scale - scale_factor) > 0.1:
+                    print(f"[DEBUG] Significant scale change: {scale_factor} -> {new_scale}")
+                    # Could trigger selective UI updates here instead of full refresh
+
+            except Exception as e:
+                print(f"[ERROR] Resize handling failed: {e}")
+
+        return on_window_resize
 
     # Initialize branch buttons
     show_branch_buttons()
 
-    # Handle window resize events
-    def on_window_resize(event):
-        if event.widget == admin:
-            # Update responsive elements when window is resized
-            current_width = admin.winfo_width()
-            current_height = admin.winfo_height()
+    # Handle window resize events with debouncing
+    admin.bind("<Configure>", create_resize_handler())
 
-            # Recalculate scaling if needed
-            new_scale = min(current_width / 1920, current_height / 1080)
-            if abs(new_scale - scale_factor) > 0.1:  # Significant change
-                # Could trigger a refresh of responsive elements here
-                pass
+    # SAFE WIDGET CLEANUP FUNCTION
+    def cleanup_widgets():
+        """Clean up widgets and prevent memory leaks"""
+        try:
+            # Clear image references
+            image_refs.clear()
 
-    admin.bind("<Configure>", on_window_resize)
+            # Clear data structures
+            current_loaded_data.clear()
+            branches.clear()
+
+            # Reset state variables
+            last_branch[0] = None
+            last_corporation[0] = None
+            current_context.clear()
+
+            print("[DEBUG] Widget cleanup completed")
+
+        except Exception as e:
+            print(f"[ERROR] Cleanup failed: {e}")
+
+    # Bind cleanup to window close event
+    def on_closing():
+        cleanup_widgets()
+        admin.destroy()
+
+    admin.protocol("WM_DELETE_WINDOW", on_closing)
+
+    # Initialize the system - no more upfront loading of all data
+    print(f"[DEBUG] System initialized with {len(branches)} branches available")
+    if branches:
+        show_branch_buttons()
+        print("[DEBUG] Ready for user selection - data will load on demand")
+    else:
+        print("[WARNING] No branches discovered")
 
     admin.mainloop()
