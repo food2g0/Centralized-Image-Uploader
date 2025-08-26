@@ -20,7 +20,6 @@ CONFIG = {
     'installer_name': 'installer.exe',
     'timeout': 30,
     'max_retries': 3,
-    'debug_mode': True,
     'use_latest_release': True,
     'config_file': 'updater.ini',
     'log_file': 'updater.log',
@@ -41,7 +40,7 @@ CONFIG = {
 def setup_logging():
     """Setup logging with file rotation"""
     log_file = CONFIG.get('log_file', 'updater.log')
-    log_level = logging.DEBUG if CONFIG['debug_mode'] else logging.INFO
+    log_level = logging.INFO
 
     # Create logs directory if it doesn't exist
     log_dir = os.path.dirname(log_file) if os.path.dirname(log_file) else '.'
@@ -88,7 +87,7 @@ def load_config():
                         # Convert string values to appropriate types
                         if key in ['timeout', 'max_retries']:
                             CONFIG[key] = int(value)
-                        elif key in ['debug_mode', 'use_latest_release']:
+                        elif key in ['use_latest_release']:
                             CONFIG[key] = value.lower() in ('true', '1', 'yes', 'on')
                         elif key == 'preserve_files':
                             CONFIG[key] = [f.strip() for f in value.split(',') if f.strip()]
@@ -131,7 +130,6 @@ def save_default_config(config_file):
             'installer_name': CONFIG['installer_name'],
             'timeout': str(CONFIG['timeout']),
             'max_retries': str(CONFIG['max_retries']),
-            'debug_mode': str(CONFIG['debug_mode']).lower(),
             'use_latest_release': str(CONFIG['use_latest_release']).lower(),
             'log_file': CONFIG['log_file'],
             'preserve_files': ', '.join(CONFIG['preserve_files'])
@@ -712,9 +710,6 @@ def run_updater():
 
     except Exception as e:
         logger.error(f"❌ Unexpected updater error: {e}")
-        if CONFIG['debug_mode']:
-            import traceback
-            traceback.print_exc()
         UpdaterUI.show_error("Update Error", f"An unexpected error occurred:\n{str(e)}")
         return True  # Continue with app
 
@@ -762,9 +757,6 @@ def main():
         raise
     except Exception as e:
         logger.error(f"❌ Critical error: {e}")
-        if CONFIG['debug_mode']:
-            import traceback
-            traceback.print_exc()
         sys.exit(1)
 
 

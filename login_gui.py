@@ -119,11 +119,20 @@ def main():
         # 2. Try Head Office login
         head_office_data = check_head_office_login(username, password)
         if head_office_data:
-            messagebox.showinfo("Login Success", f"Welcome Head Office User!")
-            root.destroy()
-            next_screen = 'head_office'
-            next_user_data = head_office_data
-            return
+            # Check if user has role "nda"
+            user_role = head_office_data.get('role', '').lower()
+            if user_role == 'nda':
+                messagebox.showinfo("Login Success", f"Welcome Cash Management A/R!")
+                root.destroy()
+                next_screen = 'nda_cash_management'
+                next_user_data = head_office_data
+                return
+            else:
+                messagebox.showinfo("Login Success", f"Welcome Head Office User!")
+                root.destroy()
+                next_screen = 'head_office'
+                next_user_data = head_office_data
+                return
 
         # 3. Try Branch user login
         user_data = check_user_login(username, password)
@@ -164,6 +173,20 @@ def main():
         except Exception as admin_err:
             print(f"[login_gui.py] Error opening admin dashboard: {admin_err}")
             messagebox.showerror("Admin Dashboard Error", f"Could not open admin dashboard: {admin_err}")
+
+    elif next_screen == 'nda_cash_management':
+        try:
+            print(f"[login_gui.py] Attempting to open cash management for NDA user with data: {next_user_data}")
+            # Import and open cash management module
+            from cashmanagement import open_cash_management
+            open_cash_management(next_user_data)
+        except ImportError as import_err:
+            print(f"[login_gui.py] Import error for cash management: {import_err}")
+            messagebox.showerror("Import Error", "Could not import cashmanagement module. Please ensure the file exists.")
+        except Exception as cash_mgmt_err:
+            print(f"[login_gui.py] Error opening cash management: {cash_mgmt_err}")
+            print(f"[login_gui.py] User data type: {type(next_user_data)}")
+            messagebox.showerror("Cash Management Error", f"Could not open cash management: {cash_mgmt_err}")
 
     elif next_screen == 'head_office':
         try:
