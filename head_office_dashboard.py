@@ -592,15 +592,32 @@ def open_head_office_dashboard(next_user_data):
     # Create main window
     popup = tk.Tk()
     popup.title(f"📤 {user_department} - Document Upload")
-    popup.geometry("500x750")
+    popup.geometry("600x750")
     popup.configure(bg=COLORS['light'])
     popup.resizable(False, True)
 
-    # Center the window
+
     popup.update_idletasks()
-    x = (popup.winfo_screenwidth() // 2) - (popup.winfo_width() // 2)
-    y = (popup.winfo_screenheight() // 2) - (popup.winfo_height() // 2)
-    popup.geometry(f"+{x}+{y}")
+
+
+    screen_width = popup.winfo_screenwidth()
+    screen_height = popup.winfo_screenheight()
+
+    window_width = popup.winfo_width()
+    window_height = popup.winfo_height()
+
+    x = (screen_width - window_width) // 2
+    y = max(10, (screen_height - window_height - 80) // 2)  # 80px buffer for taskbar
+
+    if y + window_height > screen_height - 60:
+        y = screen_height - window_height - 60
+
+    popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+    max_height = screen_height - 100  # 100px buffer for taskbar and title bar
+    if window_height > max_height:
+        popup.geometry(f"500x{max_height}")
+        popup.resizable(False, True)  # Allow vertical resize if needed
 
     # Variables
     corporation_var = tk.StringVar()
@@ -944,11 +961,3 @@ def main(next_user_data):
         messagebox.showerror("Dashboard Error", f"Failed to open upload dashboard: {e}")
 
 
-if __name__ == "__main__":
-    # Test data - remove this in production
-    test_next_user_data = {
-        "username": "IT DEPT",
-        "department": "IT Department",
-        "password": "123456"
-    }
-    main(test_next_user_data)

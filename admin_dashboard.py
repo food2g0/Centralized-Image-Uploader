@@ -14,6 +14,418 @@ def open_admin_dashboard_group3(admin_data):
     from corporations import group3_corporations
     from notification_system import NotificationSystem
     import threading
+    from typing import Dict, List, Optional, Tuple, Any
+
+
+    class OptimizedFirestoreManager:
+
+
+        def __init__(self, db, bucket):
+            self.db = db
+            self.bucket = bucket
+            self.cache = {}
+            self.cache_timeout = 1800  # 30 minutes cache for heavy queries
+            self.page_size = 25
+            self.max_branch_discovery = 100  # Strict limit for branch discovery
+
+            # Create composite indexes programmatically (you'll need to add these in Firebase Console)
+            self.required_indexes = [
+                # For branch queries with filters
+                ("branch", "timestamp"),
+                ("branch", "transaction_type", "timestamp"),
+                ("branch", "date", "timestamp"),
+                ("branch", "transaction_type", "date", "timestamp"),
+
+                # For corporation queries with filters
+                ("corporations", "timestamp"),
+                ("corporations", "transaction_type", "timestamp"),
+                ("corporations", "date", "timestamp"),
+                ("corporations", "transaction_type", "date", "timestamp"),
+
+                # For efficient branch discovery
+                ("corporations", "branch"),
+            ]
+
+        def _get_cache_key(self, query_type: str, **params) -> str:
+            """Generate consistent cache key"""
+            sorted_params = sorted(params.items())
+            return f"{query_type}_{hash(str(sorted_params))}"
+
+        def _is_cache_valid(self, cache_key: str) -> bool:
+            """Check if cached data is still valid"""
+            if cache_key not in self.cache:
+                return False
+            return time.time() - self.cache[cache_key]['timestamp'] < self.cache_timeout
+
+        def _cache_result(self, cache_key: str, data: Any, custom_timeout: int = None):
+            """Cache query result with custom timeout"""
+            timeout = custom_timeout or self.cache_timeout
+            self.cache[cache_key] = {
+                'data': data,
+                'timestamp': time.time(),
+                'timeout': timeout
+            }
+
+        def load_branches_ultra_optimized(self, group_corps: List[str]) -> List[str]:
+            """ULTRA-OPTIMIZED: Load unique branches with absolute minimal reads"""
+            cache_key = self._get_cache_key("branches_ultra", corps=str(sorted(group_corps)))
+
+            if self._is_cache_valid(cache_key):
+                return self.cache[cache_key]['data']
+
+            try:
+                branches_set = set()
+                total_reads = 0
+
+                # Strategy 1: Use aggregation query if available (Firestore Count queries)
+                # This is the most cost-effective approach for large datasets
+
+                # Strategy 2: Batch corporations and use SELECT with strict limits
+                corp_batches = [group_corps[i:i + 10] for i in range(0, len(group_corps), 10)]
+
+                for batch in corp_batches:
+                    # CRITICAL: Only select 'branch' field to minimize data transfer cost
+                    query = (self.db.collection("Uploaded_Images")
+                             .where("corporations", "in", batch)
+                             .select(["branch"])  # Only read branch field - MASSIVE cost reduction
+                             .limit(self.max_branch_discovery))  # Strict limit
+
+                    docs = query.stream()
+                    batch_count = 0
+
+                    for doc in docs:
+                        total_reads += 1
+                        batch_count += 1
+
+                        data = doc.to_dict()
+                        if data and "branch" in data:
+                            branch = data.get("branch", "").strip()
+                            if branch:
+                                branches_set.add(branch)
+
+                        # Early termination to control costs
+                        if len(branches_set) >= 50 or total_reads >= self.max_branch_discovery:
+                            break
+
+                    if len(branches_set) >= 50 or total_reads >= self.max_branch_discovery:
+                        break
+
+                branches_list = sorted(list(branches_set))
+
+                # Cache for longer time since branches don't change often
+                self._cache_result(cache_key, branches_list, custom_timeout=3600)  # 1 hour cache
+
+                print(f"Branch discovery - Total reads: {total_reads}, Found branches: {len(branches_list)}")
+                return branches_list
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load branches: {e}")
+                return []
+
+        def load_branch_data_cursor_paginated(self, branch_name: str, page_size: int = 25,
+                                              cursor_doc=None, filters: Dict = None) -> Tuple[
+            List[dict], Optional[Any], bool]:
+            """CURSOR-BASED PAGINATION: Most efficient for large datasets"""
+
+            cache_key = self._get_cache_key("branch_cursor",
+                                            branch=branch_name,
+                                            cursor=str(cursor_doc.id if cursor_doc else None),
+                                            filters=str(filters))
+
+            if self._is_cache_valid(cache_key):
+                cached = self.cache[cache_key]['data']
+                return cached['data'], cached['last_doc'], cached['has_more']
+
+            try:
+                # Build optimized query with composite indexes
+                query = (self.db.collection("Uploaded_Images")
+                         .where("branch", "==", branch_name)
+                         .order_by("timestamp", direction="DESCENDING")
+                         .limit(page_size + 1))  # +1 to check if there are more pages
+
+                # Apply filters with proper indexing
+                if filters:
+                    if filters.get('transaction_type') and filters['transaction_type'] != 'All':
+                        query = query.where("transaction_type", "==", filters['transaction_type'])
+
+                    if filters.get('start_date'):
+                        query = query.where("date", ">=", filters['start_date'])
+
+                    if filters.get('end_date'):
+                        query = query.where("date", "<=", filters['end_date'])
+
+                # Apply cursor for pagination
+                if cursor_doc:
+                    query = query.start_after(cursor_doc)
+
+                docs = list(query.stream())
+
+                # Check if there are more pages
+                has_more = len(docs) > page_size
+                if has_more:
+                    docs = docs[:-1]  # Remove the extra document
+
+                branch_data = []
+                last_doc = None
+
+                for doc in docs:
+                    data = doc.to_dict()
+                    if data:
+                        data["doc_id"] = doc.id
+                        branch_data.append(data)
+                        last_doc = doc
+
+                result = {
+                    'data': branch_data,
+                    'last_doc': last_doc,
+                    'has_more': has_more
+                }
+
+                # Cache for shorter time for dynamic data
+                self._cache_result(cache_key, result, custom_timeout=300)  # 5 minutes
+
+                return branch_data, last_doc, has_more
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load branch data: {e}")
+                return [], None, False
+
+        def get_document_count_estimate(self, branch_name: str = None, corp_name: str = None,
+                                        filters: Dict = None) -> int:
+            """Get approximate document count using efficient aggregation"""
+
+            cache_key = self._get_cache_key("count_estimate",
+                                            branch=branch_name,
+                                            corp=corp_name,
+                                            filters=str(filters))
+
+            if self._is_cache_valid(cache_key):
+                return self.cache[cache_key]['data']
+
+            try:
+                # Strategy 1: Use Firestore Count aggregation query (if available)
+                # This is the most cost-effective for large collections
+
+                # Strategy 2: Sample-based estimation for very large datasets
+                base_query = self.db.collection("Uploaded_Images")
+
+                if branch_name:
+                    base_query = base_query.where("branch", "==", branch_name)
+                elif corp_name:
+                    base_query = base_query.where("corporations", "==", corp_name)
+
+                # Apply filters
+                if filters:
+                    if filters.get('transaction_type') and filters['transaction_type'] != 'All':
+                        base_query = base_query.where("transaction_type", "==", filters['transaction_type'])
+                    if filters.get('start_date'):
+                        base_query = base_query.where("date", ">=", filters['start_date'])
+                    if filters.get('end_date'):
+                        base_query = base_query.where("date", "<=", filters['end_date'])
+
+                # For large datasets, use sampling approach
+                sample_query = base_query.select([]).limit(1000)  # Empty select for counting
+                sample_docs = list(sample_query.stream())
+
+                # If we got exactly 1000, there are likely more - estimate
+                if len(sample_docs) == 1000:
+                    # This is a rough estimate - you might want to implement more sophisticated sampling
+                    estimated_count = 1000  # Conservative estimate
+                else:
+                    estimated_count = len(sample_docs)
+
+                # Cache count estimates for longer
+                self._cache_result(cache_key, estimated_count, custom_timeout=1800)  # 30 minutes
+
+                return estimated_count
+
+            except Exception:
+                return 0
+
+        def bulk_operation_optimized(self, operations: List[Dict], batch_size: int = 500):
+
+
+            try:
+                # Split operations into batches (Firestore batch limit is 500)
+                for i in range(0, len(operations), batch_size):
+                    batch = self.db.batch()
+                    batch_ops = operations[i:i + batch_size]
+
+                    for op in batch_ops:
+                        if op['type'] == 'delete':
+                            doc_ref = self.db.collection("Uploaded_Images").document(op['doc_id'])
+                            batch.delete(doc_ref)
+                        elif op['type'] == 'update':
+                            doc_ref = self.db.collection("Uploaded_Images").document(op['doc_id'])
+                            batch.update(doc_ref, op['data'])
+
+                    # Commit batch
+                    batch.commit()
+
+                return True
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Bulk operation failed: {e}")
+                return False
+
+        def search_documents_optimized(self, search_term: str, context: Dict,
+                                       page_size: int = 25) -> List[dict]:
+            """Optimized document search with proper indexing"""
+
+            cache_key = self._get_cache_key("search",
+                                            term=search_term.lower(),
+                                            context=str(context))
+
+            if self._is_cache_valid(cache_key):
+                return self.cache[cache_key]['data']
+
+            try:
+                # For filename search, we need to implement proper text search
+                # Firestore doesn't have full-text search, so we use array-contains for keywords
+
+                base_query = self.db.collection("Uploaded_Images")
+
+                # Apply context filters first
+                if context.get('type') == 'branch':
+                    base_query = base_query.where("branch", "==", context['value'])
+                elif context.get('type') == 'corporation':
+                    base_query = base_query.where("corporations", "==", context['value'])
+
+                # For better search, you should store filename keywords in an array field
+                # and use array-contains-any for efficient searching
+                query = (base_query
+                         .order_by("timestamp", direction="DESCENDING")
+                         .limit(page_size * 5))  # Get more to filter client-side
+
+                docs = list(query.stream())
+
+                # Client-side filtering (not ideal for large datasets)
+                search_results = []
+                search_lower = search_term.lower()
+
+                for doc in docs:
+                    data = doc.to_dict()
+                    if data:
+                        filename = data.get("filename", "").lower()
+                        if search_lower in filename:
+                            data["doc_id"] = doc.id
+                            search_results.append(data)
+
+                            if len(search_results) >= page_size:
+                                break
+
+                # Cache search results briefly
+                self._cache_result(cache_key, search_results, custom_timeout=300)
+
+                return search_results
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Search failed: {e}")
+                return []
+
+        def clear_cache_smart(self):
+            """Smart cache clearing - only clear expired entries"""
+            current_time = time.time()
+            expired_keys = []
+
+            for key, cached_data in self.cache.items():
+                timeout = cached_data.get('timeout', self.cache_timeout)
+                if current_time - cached_data['timestamp'] > timeout:
+                    expired_keys.append(key)
+
+            for key in expired_keys:
+                del self.cache[key]
+
+            print(f"Cleared {len(expired_keys)} expired cache entries")
+
+    # Usage in your main application
+    def create_optimized_admin_dashboard(admin_data):
+        """Modified version of your admin dashboard with optimized operations"""
+
+        # Initialize optimized manager
+        optimizer = OptimizedFirestoreManager(db, bucket)
+
+        # Global state management
+        class AppState:
+            def __init__(self):
+                self.current_data = []
+                self.current_context = {"type": None, "value": None}
+                self.current_cursor = None
+                self.has_more_pages = True
+                self.page_number = 0
+
+            def reset(self):
+                self.current_data.clear()
+                self.current_cursor = None
+                self.has_more_pages = True
+                self.page_number = 0
+
+        app_state = AppState()
+
+        def load_page_data(context, page_size=25, reset_pagination=False):
+            """Load data with proper cursor-based pagination"""
+
+            if reset_pagination:
+                app_state.reset()
+
+            try:
+                if context["type"] == "branch":
+                    data, cursor, has_more = optimizer.load_branch_data_cursor_paginated(
+                        context["value"],
+                        page_size=page_size,
+                        cursor_doc=app_state.current_cursor if not reset_pagination else None
+                    )
+                elif context["type"] == "corporation":
+                    data, cursor, has_more = optimizer.load_corporation_data_cursor_paginated(
+                        context["value"],
+                        page_size=page_size,
+                        cursor_doc=app_state.current_cursor if not reset_pagination else None
+                    )
+                else:
+                    return [], None, False
+
+                if reset_pagination:
+                    app_state.current_data = data
+                else:
+                    app_state.current_data.extend(data)
+
+                app_state.current_cursor = cursor
+                app_state.has_more_pages = has_more
+                app_state.current_context = context
+
+                if not reset_pagination:
+                    app_state.page_number += 1
+
+                return data, cursor, has_more
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load data: {e}")
+                return [], None, False
+
+        def optimized_search(search_term, context):
+            """Optimized search function"""
+            if not search_term.strip():
+                return app_state.current_data
+
+            return optimizer.search_documents_optimized(search_term, context)
+
+        def bulk_delete_optimized(selected_doc_ids):
+            """Optimized bulk delete operation"""
+            operations = [{"type": "delete", "doc_id": doc_id} for doc_id in selected_doc_ids]
+
+            return optimizer.bulk_operation_optimized(operations)
+
+        # Periodic cache cleanup
+        def schedule_cache_cleanup():
+            """Schedule periodic cache cleanup"""
+            optimizer.clear_cache_smart()
+            # Schedule next cleanup in 10 minutes
+            admin.after(600000, schedule_cache_cleanup)
+
+        # Start cache cleanup scheduler
+        admin.after(600000, schedule_cache_cleanup)  # Start after 10 minutes
+
+        return optimizer, app_state, load_page_data, optimized_search, bulk_delete_optimized
 
     admin = tk.Tk()
     admin.title("Admin Dashboard - Record Management System")
@@ -70,7 +482,7 @@ def open_admin_dashboard_group3(admin_data):
             return "📄", "Unknown File"
 
         filename_lower = filename.lower()
-        if filename_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')):
+        if filename_lower.endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.jfif' )):
             return "🖼️", "Image File"
         elif filename_lower.endswith('.pdf'):
             return "📄", "PDF Document"
@@ -189,7 +601,6 @@ def open_admin_dashboard_group3(admin_data):
 
         # Prevent infinite recursion with depth limit
         if depth > 50:  # Reasonable maximum depth
-            print(f"[WARNING] Widget binding depth limit reached: {depth}")
             return
 
         # Prevent cycles
@@ -221,7 +632,6 @@ def open_admin_dashboard_group3(admin_data):
 
     def load_branches_only():
         """Load only unique branches for the sidebar - lightweight query"""
-        print("[DEBUG] Loading branches list...")
         try:
             # Get all documents but only fetch branch field to minimize data transfer
             docs = db.collection("Uploaded_Images").where("corporations", "in", group3_corporations).stream()
@@ -232,7 +642,6 @@ def open_admin_dashboard_group3(admin_data):
             for doc in docs:
                 doc_count += 1
                 if doc_count > 50000:  # Reasonable limit for branch discovery
-                    print(f"[WARNING] Reached document limit while discovering branches")
                     break
 
                 data = doc.to_dict()
@@ -241,17 +650,13 @@ def open_admin_dashboard_group3(admin_data):
                     if branch:
                         branches_set.add(branch)
 
-            print(f"[DEBUG] Discovered {len(branches_set)} branches from {doc_count} documents")
             return sorted(list(branches_set))
 
         except Exception as e:
-            print(f"[ERROR] Failed to load branches: {e}")
+            messagebox.showerror("Error", f"Failed to load branches: {e}")
             return []
 
     def load_branch_data(branch_name):
-        """Load data for a specific branch only"""
-        print(f"[DEBUG] Loading data for branch: {branch_name}")
-
         try:
             # Query only documents for this specific branch
             docs = db.collection("Uploaded_Images").where("branch", "==", branch_name).stream()
@@ -267,17 +672,14 @@ def open_admin_dashboard_group3(admin_data):
                     data["doc_id"] = doc.id
                     branch_data.append(data)
 
-            print(f"[DEBUG] Loaded {len(branch_data)} documents for branch '{branch_name}'")
             return branch_data
 
         except Exception as e:
-            print(f"[ERROR] Failed to load branch data for '{branch_name}': {e}")
+            messagebox.showerror("Error", f"Failed to load branch data for '{branch_name}': {e}")
             return []
 
     def load_corporation_data(corporation_name):
         """Load data for a specific corporation across all branches"""
-        print(f"[DEBUG] Loading data for corporation: {corporation_name}")
-
         try:
             # Query only documents for this specific corporation
             docs = db.collection("Uploaded_Images").where("corporations", "==", corporation_name).stream()
@@ -293,15 +695,13 @@ def open_admin_dashboard_group3(admin_data):
                     data["doc_id"] = doc.id
                     corp_data.append(data)
 
-            print(f"[DEBUG] Loaded {len(corp_data)} documents for corporation '{corporation_name}'")
             return corp_data
 
         except Exception as e:
-            print(f"[ERROR] Failed to load corporation data for '{corporation_name}': {e}")
+            messagebox.showerror("Error", f"Failed to load corporation data for '{corporation_name}': {e}")
             return []
 
     # Initialize with lightweight branch loading
-    print("[DEBUG] Initializing with branch discovery...")
     available_branches = load_branches_only()
     branches.update(available_branches)
 
@@ -313,20 +713,16 @@ def open_admin_dashboard_group3(admin_data):
         # Prevent rapid successive calls
         if hasattr(refresh_data, '_last_refresh'):
             if current_time - refresh_data._last_refresh < 2.0:
-                print("[DEBUG] Refresh blocked - too frequent")
                 return
 
         # Prevent concurrent refreshes
         if hasattr(refresh_data, '_refreshing') and refresh_data._refreshing:
-            print("[DEBUG] Refresh blocked - already in progress")
             return
 
         def do_refresh():
             try:
                 refresh_data._refreshing = True
                 refresh_data._last_refresh = current_time
-
-                print("[DEBUG] Refreshing current view...")
 
                 # Force reload current data
                 if current_context.get("type") == "branch":
@@ -342,7 +738,6 @@ def open_admin_dashboard_group3(admin_data):
                     show_branch_buttons()
 
             except Exception as e:
-                print(f"[ERROR] Refresh failed: {e}")
                 messagebox.showerror("Refresh Error", f"Failed to refresh data: {str(e)}")
             finally:
                 refresh_data._refreshing = False
@@ -403,7 +798,6 @@ def open_admin_dashboard_group3(admin_data):
         elif branch:
             context_key = ("branch", branch)
         else:
-            print("[WARNING] No branch or corporation specified")
             return
 
         # Check if we need to reload data
@@ -413,8 +807,6 @@ def open_admin_dashboard_group3(admin_data):
                        len(current_loaded_data) == 0)
 
         if need_reload:
-            print(f"[DEBUG] Loading new data for {context_key}")
-
             # Clear existing UI
             for widget in scroll_frame.winfo_children():
                 widget.destroy()
@@ -447,10 +839,6 @@ def open_admin_dashboard_group3(admin_data):
 
             # Remove loading indicator
             loading_frame.destroy()
-
-            print(f"[DEBUG] Loaded {len(current_loaded_data)} documents")
-        else:
-            print(f"[DEBUG] Using cached data for {context_key} ({len(current_loaded_data)} documents)")
 
         # Clear UI for fresh display
         for widget in scroll_frame.winfo_children():
@@ -736,8 +1124,8 @@ def open_admin_dashboard_group3(admin_data):
                     try:
                         blob = bucket.blob(storage_path)
                         blob.delete()
-                    except Exception as e:
-                        print(f"⚠️ Failed to delete storage file {filename}: {e}")
+                    except Exception:
+                        pass
 
                     db.collection("Uploaded_Images").document(doc_data["doc_id"]).delete()
 
@@ -748,8 +1136,7 @@ def open_admin_dashboard_group3(admin_data):
                         filtered_images.remove(doc_data)
                     selected_images.discard(doc_data["doc_id"])
                     success += 1
-                except Exception as err:
-                    print(f"🔥 Failed to delete {filename}: {err}")
+                except Exception:
                     failed += 1
 
             # Update filtered images
@@ -825,25 +1212,21 @@ def open_admin_dashboard_group3(admin_data):
                         try:
                             start_date = datetime.datetime.strptime(start_val, "%Y-%m-%d")
                         except ValueError:
-                            print(f"[WARNING] Invalid start date: {start_val}")
+                            pass
 
                     if end_val:
                         try:
                             end_date = datetime.datetime.strptime(end_val, "%Y-%m-%d")
                         except ValueError:
-                            print(f"[WARNING] Invalid end date: {end_val}")
+                            pass
 
-                    # Apply filters with progress indication
+                    # Apply filters
                     filtered = []
                     total_images = len(all_images)
 
                     for i, img in enumerate(all_images):
-                        if i % 100 == 0 and i > 0:  # Progress indication every 100 items
-                            print(f"[DEBUG] Filtering progress: {i}/{total_images}")
-
                         if matches(img):
                             filtered.append(img)
-
 
                     # Update UI
                     filtered_images.clear()
@@ -852,7 +1235,6 @@ def open_admin_dashboard_group3(admin_data):
                     display_images_page()
 
                 except Exception as e:
-                    print(f"[ERROR] Filter application failed: {e}")
                     messagebox.showerror("Filter Error", f"Failed to apply filters: {str(e)}")
 
             return debounced_apply_filters
@@ -921,7 +1303,7 @@ def open_admin_dashboard_group3(admin_data):
 
                 tk.Label(
                     search_info_frame,
-                    text=f"🔍 Search results for '{search_query}': {results_count} files found",
+                    text=f"Search results for '{search_query}': {results_count} files found",
                     font=("Segoe UI", get_font_size(11), "bold"),
                     bg=COLORS['surface'],
                     fg=COLORS['secondary']
@@ -946,7 +1328,7 @@ def open_admin_dashboard_group3(admin_data):
 
             select_all_cb = tk.Checkbutton(
                 select_all_frame,
-                text="✓ Select All (this page & filter)",
+                text="Select All (this page & filter)",
                 variable=select_all_var,
                 command=on_select_all,
                 bg=COLORS['surface'],
@@ -968,7 +1350,7 @@ def open_admin_dashboard_group3(admin_data):
                 if filename_search_var.get().strip() and filename_search_var.get().strip().lower() != "type filename here...":
                     tk.Label(
                         no_images_frame,
-                        text="🔍 No files match your search",
+                        text="No files match your search",
                         font=("Segoe UI", get_font_size(16), "bold"),
                         fg=COLORS['muted'],
                         bg=COLORS['surface']
@@ -983,7 +1365,7 @@ def open_admin_dashboard_group3(admin_data):
                 else:
                     tk.Label(
                         no_images_frame,
-                        text="📁 No files found",
+                        text="No files found",
                         font=("Segoe UI", get_font_size(16), "bold"),
                         fg=COLORS['muted'],
                         bg=COLORS['surface']
@@ -1007,7 +1389,7 @@ def open_admin_dashboard_group3(admin_data):
                     return
 
                 top = tk.Toplevel(admin)
-                top.title(f"📄 {filename}")
+                top.title(f"{filename}")
 
                 # Responsive popup size
                 popup_width = max(800, min(1200, int(screen_width * 0.8)))
@@ -1016,7 +1398,7 @@ def open_admin_dashboard_group3(admin_data):
                 top.configure(bg=COLORS['background'])
 
                 # Check if it's an image file
-                is_image = filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'))
+                is_image = filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.jfif'))
 
                 if is_image:
                     # Handle image files
@@ -1088,7 +1470,7 @@ def open_admin_dashboard_group3(admin_data):
 
                             tk.Button(
                                 zoom_frame,
-                                text="🔍+ Zoom In",
+                                text="Zoom In",
                                 bg=COLORS['secondary'],
                                 fg="white",
                                 command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] * 1.1), render_image()],
@@ -1097,7 +1479,7 @@ def open_admin_dashboard_group3(admin_data):
 
                             tk.Button(
                                 zoom_frame,
-                                text="🔍- Zoom Out",
+                                text="Zoom Out",
                                 bg=COLORS['muted'],
                                 fg="white",
                                 command=lambda: [zoom_factor.__setitem__(0, zoom_factor[0] / 1.1), render_image()],
@@ -1106,10 +1488,10 @@ def open_admin_dashboard_group3(admin_data):
 
                             render_image()
                         else:
-                            tk.Label(top, text="❌ Failed to load image", bg=COLORS['background'], fg=COLORS['danger'],
+                            tk.Label(top, text="Failed to load image", bg=COLORS['background'], fg=COLORS['danger'],
                                      font=("Segoe UI", get_font_size(12))).pack(pady=50)
                     except Exception as e:
-                        tk.Label(top, text=f"❌ Failed to load image: {e}", bg=COLORS['background'], fg=COLORS['danger'],
+                        tk.Label(top, text=f"Failed to load image: {e}", bg=COLORS['background'], fg=COLORS['danger'],
                                  font=("Segoe UI", get_font_size(12))).pack(pady=50)
                 else:
                     # Handle non-image files (PDF, DOCX, etc.)
@@ -1165,7 +1547,7 @@ def open_admin_dashboard_group3(admin_data):
 
                     tk.Button(
                         info_frame,
-                        text="📥 Download File",
+                        text="Download File",
                         font=("Segoe UI", get_font_size(12), "bold"),
                         bg=COLORS['success'],
                         fg="white",
@@ -1183,7 +1565,7 @@ def open_admin_dashboard_group3(admin_data):
 
                     tk.Label(
                         details_frame,
-                        text="📋 File Details",
+                        text="File Details",
                         font=("Segoe UI", get_font_size(14), "bold"),
                         bg=COLORS['surface'],
                         fg=COLORS['text']
@@ -1191,11 +1573,11 @@ def open_admin_dashboard_group3(admin_data):
 
                     # Display file metadata
                     details_info = [
-                        ("📄 Filename", filename),
-                        ("🏢 Branch", file_data.get("branch", "N/A")),
-                        ("👤 Uploaded By", file_data.get("uploaded_by", "N/A")),
-                        ("📅 Transaction Date", file_data.get("date", "N/A")),
-                        ("💼 Transaction Type", file_data.get("transaction_type", "N/A")),
+                        ("Filename", filename),
+                        ("Branch", file_data.get("branch", "N/A")),
+                        ("Uploaded By", file_data.get("uploaded_by", "N/A")),
+                        ("Transaction Date", file_data.get("date", "N/A")),
+                        ("Transaction Type", file_data.get("transaction_type", "N/A")),
                     ]
 
                     for label, value in details_info:
@@ -1308,7 +1690,7 @@ def open_admin_dashboard_group3(admin_data):
                 img_label = tk.Label(
                     card_frame,
                     bg=COLORS['surface'],
-                    text="📄\nLoading...",
+                    text="Loading...",
                     font=("Segoe UI", get_font_size(11)),
                     fg=COLORS['muted'],
                     width=img_width,
@@ -1330,7 +1712,7 @@ def open_admin_dashboard_group3(admin_data):
                 filename_text = file_data.get("filename", "")
                 search_query = filename_search_var.get().strip().lower()
                 if search_query and search_query != "type filename here..." and search_query in filename_text.lower():
-                    filename_display = f"📄 {filename_text} ⭐"
+                    filename_display = f"{filename_text}"
                     filename_color = COLORS['success']
                 else:
                     filename_display = filename_text
@@ -1338,12 +1720,12 @@ def open_admin_dashboard_group3(admin_data):
 
                 # Responsive info data
                 info_data = [
-                    ("📄 File", filename_display, filename_color),
-                    ("🏢 Branch", file_data.get("branch", ""), COLORS['muted']),
-                    ("👤 Uploaded By", file_data.get("uploaded_by", ""), COLORS['muted']),
-                    ("📅 Transaction Date", file_data.get("date", ""), COLORS['muted']),
-                    ("💼 Transaction Type", file_data.get("transaction_type", ""), COLORS['muted']),
-                    ("⏰ Date Uploaded", format_timestamp(file_data.get("timestamp", "")), COLORS['muted']),
+                    ("File", filename_display, filename_color),
+                    ("Branch", file_data.get("branch", ""), COLORS['muted']),
+                    ("Uploaded By", file_data.get("uploaded_by", ""), COLORS['muted']),
+                    ("Transaction Date", file_data.get("date", ""), COLORS['muted']),
+                    ("Transaction Type", file_data.get("transaction_type", ""), COLORS['muted']),
+                    ("Date Uploaded", format_timestamp(file_data.get("timestamp", "")), COLORS['muted']),
                 ]
 
                 for label, val, text_color in info_data:
@@ -1367,7 +1749,7 @@ def open_admin_dashboard_group3(admin_data):
                         row,
                         text=val,
                         font=("Segoe UI", get_font_size(10),
-                              "bold" if label == "📄 File" and "⭐" in str(val) else "normal"),
+                              "bold" if label == "File" and text_color == COLORS['success'] else "normal"),
                         bg=COLORS['surface'],
                         fg=text_color,
                         anchor="w",
@@ -1402,7 +1784,7 @@ def open_admin_dashboard_group3(admin_data):
 
                 view_btn = tk.Button(
                     actions_frame,
-                    text="👁️ View",
+                    text="View",
                     font=("Segoe UI", get_font_size(9), "bold"),
                     bg=COLORS['accent'],
                     fg="white",
@@ -1432,7 +1814,7 @@ def open_admin_dashboard_group3(admin_data):
             # Previous button
             prev_btn = tk.Button(
                 nav_frame,
-                text="⬅️ Previous",
+                text="Previous",
                 state="normal" if current_page[0] > 0 else "disabled",
                 bg=COLORS['secondary'] if current_page[0] > 0 else COLORS['muted'],
                 fg="white",
@@ -1453,7 +1835,7 @@ def open_admin_dashboard_group3(admin_data):
             # Next button
             next_btn = tk.Button(
                 nav_frame,
-                text="Next ➡️",
+                text="Next",
                 state="normal" if end < len(filtered_images) else "disabled",
                 bg=COLORS['secondary'] if end < len(filtered_images) else COLORS['sidebar'],
                 fg="white",
@@ -1473,7 +1855,7 @@ def open_admin_dashboard_group3(admin_data):
         # Responsive filter buttons
         tk.Button(
             filter_row2,
-            text="🔍 Apply Filters",
+            text="Apply Filters",
             font=("Segoe UI", get_font_size(10), "bold"),
             bg=COLORS['secondary'],
             fg="white",
@@ -1487,7 +1869,7 @@ def open_admin_dashboard_group3(admin_data):
 
         tk.Button(
             filter_row2,
-            text="📥 Download All",
+            text="Download All",
             font=("Segoe UI", get_font_size(10), "bold"),
             bg=COLORS['warning'],
             fg="white",
@@ -1508,7 +1890,7 @@ def open_admin_dashboard_group3(admin_data):
 
         tk.Button(
             filter_row1,
-            text="❌ Clear",
+            text="Clear",
             font=("Segoe UI", get_font_size(9), "bold"),
             bg=COLORS['muted'],
             fg="white",
@@ -1546,7 +1928,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Label(
         sidebar_header,
-        text=f"👋 Welcome",
+        text="Welcome",
         font=("Segoe UI", get_font_size(14), "bold"),
         bg=COLORS['sidebar'],
         fg="white"
@@ -1608,7 +1990,7 @@ def open_admin_dashboard_group3(admin_data):
 
     def show_corporation_selector():
         popup = tk.Toplevel(admin)
-        popup.title("🏢 Select Corporation")
+        popup.title("Select Corporation")
 
         # Responsive popup size
         popup_width = max(350, min(500, int(400 * font_scale)))
@@ -1627,7 +2009,7 @@ def open_admin_dashboard_group3(admin_data):
 
         tk.Label(
             header_frame,
-            text="🏢 Choose a Corporation",
+            text="Choose a Corporation",
             font=("Segoe UI", get_font_size(14), "bold"),
             bg=COLORS['secondary'],
             fg="white"
@@ -1670,7 +2052,7 @@ def open_admin_dashboard_group3(admin_data):
 
         tk.Button(
             content_frame,
-            text="📊 Show Files",
+            text="Show Files",
             font=("Segoe UI", get_font_size(11), "bold"),
             bg=COLORS['success'],
             fg="white",
@@ -1692,7 +2074,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Label(
         search_section,
-        text="🔍 Search Branch:",
+        text="Search Branch:",
         font=("Segoe UI", get_font_size(11), "bold"),
         bg=COLORS['sidebar'],
         fg="white"
@@ -1718,7 +2100,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Label(
         corp_section,
-        text="🏢 Corporation:",
+        text="Corporation:",
         font=("Segoe UI", get_font_size(11), "bold"),
         bg=COLORS['sidebar'],
         fg="white"
@@ -1768,7 +2150,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Button(
         button_section,
-        text="🏢 Select Corporation",
+        text="Select Corporation",
         command=show_corporation_selector,
         bg=COLORS['secondary'],
         fg="white",
@@ -1791,7 +2173,7 @@ def open_admin_dashboard_group3(admin_data):
     def head_office_menu():
         """Create a popup menu for head office options"""
         popup = tk.Toplevel(admin)
-        popup.title("🏢 Head Office Options")
+        popup.title("Head Office Options")
 
         # Responsive popup size
         popup_width = max(320, min(450, int(380 * font_scale)))
@@ -1816,7 +2198,7 @@ def open_admin_dashboard_group3(admin_data):
 
         tk.Label(
             header_frame,
-            text="🏢 Head Office Options",
+            text="Head Office Options",
             font=("Segoe UI", get_font_size(16), "bold"),
             bg=COLORS['sidebar'],
             fg="white"
@@ -1829,7 +2211,7 @@ def open_admin_dashboard_group3(admin_data):
         # Upload button with hover effects
         upload_btn = tk.Button(
             content_frame,
-            text="📤 Upload Documents",
+            text="Upload Documents",
             font=("Segoe UI", get_font_size(12), "bold"),
             bg=COLORS['success'],
             fg="white",
@@ -1855,7 +2237,7 @@ def open_admin_dashboard_group3(admin_data):
         # View button with hover effects
         view_btn = tk.Button(
             content_frame,
-            text="👁️ View Documents",
+            text="View Documents",
             font=("Segoe UI", get_font_size(12), "bold"),
             bg=COLORS['secondary'],
             fg="white",
@@ -1881,7 +2263,7 @@ def open_admin_dashboard_group3(admin_data):
         # Close button with subtle styling
         close_btn = tk.Button(
             content_frame,
-            text="✕ Close",
+            text="Close",
             font=("Segoe UI", get_font_size(10), "bold"),
             bg=COLORS['muted'],
             fg="white",
@@ -1910,7 +2292,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Button(
         button_section,
-        text="➕ Add User",
+        text="Add User",
         bg=COLORS['success'],
         fg="white",
         command=lambda: open_add_user_popup_group3(admin),
@@ -1919,7 +2301,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Button(
         button_section,
-        text="🏢 Head Office ▼",
+        text="Head Office",
         bg='#8b5cf6',  # Purple color
         fg="white",
         command=head_office_menu,
@@ -1928,7 +2310,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Button(
         button_section,
-        text="🚪 Logout",
+        text="Logout",
         bg=COLORS['danger'],
         fg="white",
         command=logout,
@@ -1941,7 +2323,7 @@ def open_admin_dashboard_group3(admin_data):
 
     tk.Label(
         footer_section,
-        text="💻 Developed by:",
+        text="Developed by:",
         font=("Segoe UI", get_font_size(9), "bold"),
         fg="#94a3b8",
         bg=COLORS['sidebar']
@@ -1966,6 +2348,7 @@ def open_admin_dashboard_group3(admin_data):
     search_var.trace_add("write", update_branch_search)
 
     def create_branch_button_handler(branch_name):
+        """Create a handler for branch button clicks with proper loading"""
 
         def handler():
             last_branch[0] = branch_name
@@ -1994,7 +2377,7 @@ def open_admin_dashboard_group3(admin_data):
         for branch in show_list:
             btn = tk.Button(
                 branches_frame,
-                text=f"📂 {branch}",
+                text=f"{branch}",
                 command=create_branch_button_handler(branch),  # Use the new handler
                 **branch_btn_style
             )
@@ -2015,7 +2398,7 @@ def open_admin_dashboard_group3(admin_data):
 
     # IMPROVED WINDOW RESIZE HANDLER WITH DEBOUNCING
     def create_resize_handler():
-
+        """Create debounced window resize handler"""
         resize_timer = [None]
         last_size = [None, None]
 
@@ -2039,24 +2422,14 @@ def open_admin_dashboard_group3(admin_data):
                 resize_timer[0] = admin.after(500, lambda: handle_resize(current_width, current_height))
 
         def handle_resize(width, height):
-
+            """Handle the actual resize logic"""
             try:
                 resize_timer[0] = None
                 last_size[0] = width
                 last_size[1] = height
 
-                print(f"[DEBUG] Window resized to {width}x{height}")
-
-                # Update scaling factors
-                new_scale = min(width / 1920, height / 1080)
-
-                # Only refresh if significant scale change
-                if abs(new_scale - scale_factor) > 0.1:
-                    print(f"[DEBUG] Significant scale change: {scale_factor} -> {new_scale}")
-                    # Could trigger selective UI updates here instead of full refresh
-
             except Exception as e:
-                print(f"[ERROR] Resize handling failed: {e}")
+                messagebox.showerror("Error", f"Resize handling failed: {e}")
 
         return on_window_resize
 
@@ -2082,10 +2455,8 @@ def open_admin_dashboard_group3(admin_data):
             last_corporation[0] = None
             current_context.clear()
 
-            print("[DEBUG] Widget cleanup completed")
-
         except Exception as e:
-            print(f"[ERROR] Cleanup failed: {e}")
+            messagebox.showerror("Error", f"Cleanup failed: {e}")
 
     # Bind cleanup to window close event
     def on_closing():
@@ -2094,12 +2465,7 @@ def open_admin_dashboard_group3(admin_data):
 
     admin.protocol("WM_DELETE_WINDOW", on_closing)
 
-    # Initialize the system - no more upfront loading of all data
-    print(f"[DEBUG] System initialized with {len(branches)} branches available")
     if branches:
         show_branch_buttons()
-        print("[DEBUG] Ready for user selection - data will load on demand")
-    else:
-        print("[WARNING] No branches discovered")
 
     admin.mainloop()

@@ -19,16 +19,42 @@ group3_corporations = {
 
 CORPORATIONS = [
     "NONE",
-    "ALEXITE (J)", "GOLDSTAR ATLANTIC", "GOOD QUALITY ASSURANCE", "HOMENEEDS",
-    "INTER WORLD GEM", "KRISTAL CLEAR DIAMOND (J)", "MONEYMAX", "MULTIGAINED",
-    "PRIMARY MAX", "PRINCESS CUT (J)", "SAFELOCK",
-    "SUREPLEDGE", "UNIWORLD-ASIA", "YELLOW ENDURANCE", "ATLANTIC STARGEM",
-    "GALLIUM GRANITE", "GOLD BARS", "GREEN AMBER (J)",
-    "KING-ASIA GROUP", "KRYPTON KNIGHT", "MAXI-WEALTH", "METROGOLD STAR",
-    "NORTH-WESTERN PACIFIC", "PACIFIC METROSTAR", "PUREGOLD KARAT",
-    "SAN SEBASTIAN SILVER", "WORLDCREST", "WORLDGEM",
-    "ASIAPHIL STAR", "MAJOREVIM", "MEGAWORLD DOMESTIC", "NORTHERN SUNSTAR",
-    "SAINT BARBARA PRIME", "SAN RAMON PLATINUM", "SILVERSTAR (J)", "GLOBAL RELIANCE MANAGEMENT & HOLDINGS CORP."
+    "ALEXITE JEWELRY PAWNSHOP INC.",
+    "GOLDSTAR ATLANTIC PAWNSHOP INC.",
+    "GOOD QUALITY ASSURANCE PAWNSHOP INC.",
+    "HOMENEEDS PAWNSHOP INC.",
+    "INTER WORLD GEM PAWNSHOP INC.",
+    "KRISTAL CLEAR DIAMOND & GOLD PAWNSHOP INC.",
+    "MONEYMAX PAWNSHOP INC.",
+    "MULTIGAINED PAWNSHOP INC.",
+    "PRIMARY MAX PAWNSHOP INC.",
+    "PRINCESS CUT JEWELRY AND PAWNSHOP INC.",
+    "SAFELOCK PAWNSHOP INC.",
+    "SUREPLEDGE PAWNSHOP INC.",
+    "UNIWORLD-ASIA PAWNSHOP INC.",
+    "YELLOW ENDURANCE PAWNSHOP INC.",
+    "ATLANTIC STARGEM PAWNSHOP INC.",
+    "GALLIUM GRANITE PAWNSHOP INC.",
+    "GOLD BARS PAWNSHOP INC.",
+    "GREEN AMBER JEWELRY AND PAWNSHOP INC.",
+    "KING-ASIA GROUP PAWNSHOP INC.",
+    "KRYPTON KNIGHT PAWNSHOP INC.",
+    "MAXI-WEALTH PAWNSHOP INC.",
+    "METROGOLD STAR PAWNSHOP INC.",
+    "NORTH-WESTERN PACIFIC PAWNSHOP INC.",
+    "PACIFIC METROSTAR PAWNSHOP INC.",
+    "PUREGOLD KARAT PAWNSHOP INC.",
+    "SAN SEBASTIAN SILVER PAWNSHOP INC.",
+    "WORLDCREST PAWNSHOP INC.",
+    "WORLDGEM PAWNSHOP INC.",
+    "ASIAPHIL STAR PAWNSHOP INC.",
+    "MAJOREVIM PAWNSHOP INC.",
+    "MEGAWORLD DOMESTIC PAWNSHOP INC.",
+    "NORTHERN SUNSTAR PAWNSHOP INC.",
+    "SAINT BARBARA PRIME PAWNSHOP INC.",
+    "SAN RAMON PLATINUM PAWNSHOP INC.",
+    "SILVERSTAR JEWELRY PAWNSHOP INC.",
+    "GLOBAL RELIANCE MANAGEMENT & HOLDINGS CORP."
 ]
 
 DEPARTMENT_CONFIG = {
@@ -84,6 +110,8 @@ DEPARTMENT_CONFIG = {
     "Cash Management A/P Department": {
         "icon": "💰",
         "transactions": [
+            "RENTAL",
+            "UTILITIES",
             "BIR PAYMENTS",
             "STATUTORY BENEFITS",
             "PALAWAN",
@@ -99,9 +127,19 @@ DEPARTMENT_CONFIG = {
             "PROFESSIONAL FEE",
             "PROPERTY TAX AND ASSO DUES",
             "BUSINESS PERMITS",
-            "ADVANCES FROM OFFICERS"
+            "ADVANCES FROM OFFICERS",
+            "LAST SALARIES",
+            "CASH ADVANCES",
+            "LIQUIDATIONS",
+            "TRANSPORTATION AND TRAVE",
         ],
         "sub_categories": {
+            "UTILITIES": [
+                "ELECTRIC",
+                "WATER",
+                "INTERNET",
+                "GLOBE POSTPAID"
+            ],
             "BIR PAYMENTS": [
                 "DST",
                 "EXPANDED",
@@ -147,6 +185,7 @@ DEPARTMENT_CONFIG = {
             "SEC",
             "COR",
             "BSP",
+            "AMLC Certificate",
             "PERMITS",
             "STB",
             "MTPP"
@@ -207,9 +246,8 @@ DEPARTMENT_CONFIG = {
     "Purchasing Department": {
         "icon": "💻",
         "transactions": [
-            "Requisition Purchase",
-            "Monthly Inventory Report",
-            "Order/Purchase Process"
+            "Purchase Order",
+            "Inventory",
             
         ],
         "sub_categories": {}
@@ -235,5 +273,30 @@ DEPARTMENT_CONFIG = {
         ],
         "sub_categories": {}
     },
+    "BDD Department": {
+        "icon": "💻",
+        "transactions": [
+            "Gcash - Sales Invoice",
+            "Sunlife Insurance - Monthly Billing",
+            "Other Services Income - Monthly Income"
+
+        ],
+        "sub_categories": {}
+    },
+    "Payroll Department": {
+        "icon": "💻",
+        "transactions": [
+            "SSS",
+            "PAG-IBIG",
+            "PHILHEALTH",
+            "DTR DATABASE",
+            "COR SSS",
+            "PAG-IBIG SSF"
+
+        ],
+        "sub_categories": {}
+    },
+
+
     
 }

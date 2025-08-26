@@ -1,0 +1,25 @@
+
+# RMS Update Preservation Instructions
+# This file tells the installer which files to preserve
+
+[PRESERVE_FILES]
+updater.ini
+updater.log
+file_checksums.json
+last_update_check.txt
+user_settings.json
+config
+logs
+data
+
+[SETTINGS]
+app_name=RMS
+preserve_user_data=true
+backup_before_install=true
+
+[INSTRUCTIONS]
+# Instructions for installer:
+# 1. Backup files listed in PRESERVE_FILES section
+# 2. Install new version
+# 3. Restore backed up files
+# 4. Keep existing configuration files

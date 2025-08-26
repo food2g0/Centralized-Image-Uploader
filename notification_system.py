@@ -178,29 +178,73 @@ class NotificationSystem:
             # Get all branches that uploaded on target_date from group corporations
             branches_with_upload = set()
 
-            # Convert group_corporations to list if it's a set
+            # Convert group_corporations to list and normalize case
             if isinstance(self.group_corporations, set):
                 group_corps_list = list(self.group_corporations)
             else:
                 group_corps_list = self.group_corporations
 
-            # Convert target_date to datetime objects for timestamp comparison
-            target_datetime_start = datetime.strptime(target_date, "%Y-%m-%d")
-            target_datetime_end = target_datetime_start.replace(hour=23, minute=59, second=59)
+            # Normalize group corporations to uppercase for comparison
+            normalized_group_corps = {corp.strip().upper() for corp in group_corps_list}
 
-            # Query uploads for target date from group corporations using timestamp
-            docs = self.db.collection("Uploaded_Images").where("timestamp", ">=", target_datetime_start).where(
-                "timestamp", "<=", target_datetime_end).stream()
+            print(f"Debug - Target date: {target_date}")
+            print(f"Debug - Group corporations: {normalized_group_corps}")
+
+            # Query uploads for target date using date field only
+            docs = self.db.collection("Uploaded_Images").where("date", "==", target_date).stream()
+
+            upload_found = False
+            azalea_uploads = []  # Special tracking for AZALEA
 
             for doc in docs:
+                upload_found = True
                 data = doc.to_dict()
                 corporation = data.get("corporations", "").strip().upper()
+                branch = data.get("branch", "").strip().upper()  # Normalize branch name too
 
-                # Only include if corporation belongs to this group
-                if corporation in self.group_corporations:
-                    branch = data.get("branch", "").strip()
+                # Special tracking for AZALEA branch
+                if branch == "AZALEA":
+                    azalea_uploads.append({
+                        'corporation': corporation,
+                        'branch': branch,
+                        'doc_id': doc.id,
+                        'date': data.get("date"),
+                        'in_group': corporation in normalized_group_corps
+                    })
+                    print(
+                        f"DEBUG AZALEA - Found AZALEA upload: Corp='{corporation}', Date='{data.get('date')}', InGroup={corporation in normalized_group_corps}")
+
+                print(f"Debug - Found upload: Corporation='{corporation}', Branch='{branch}'")
+
+                # Check if corporation belongs to this group (exact match)
+                if corporation in normalized_group_corps:
                     if branch:
                         branches_with_upload.add(branch)
+                        print(f"Debug - Added branch with upload: {branch}")
+                else:
+                    print(f"Debug - Corporation '{corporation}' not in group")
+
+            # Special debug output for AZALEA
+            if azalea_uploads:
+                print(f"DEBUG AZALEA - Total AZALEA uploads found: {len(azalea_uploads)}")
+                for upload in azalea_uploads:
+                    print(f"DEBUG AZALEA - Upload details: {upload}")
+            else:
+                print(f"DEBUG AZALEA - No AZALEA uploads found for date {target_date}")
+
+            # Also check if AZALEA appears with different case variations
+            print(f"DEBUG AZALEA - Checking for case variations...")
+            docs_recheck = self.db.collection("Uploaded_Images").where("date", "==", target_date).stream()
+            for doc in docs_recheck:
+                data = doc.to_dict()
+                branch_raw = data.get("branch", "").strip()
+                if "azalea" in branch_raw.lower():
+                    print(f"DEBUG AZALEA - Found case variation: '{branch_raw}' (Corp: {data.get('corporations')})")
+
+            if not upload_found:
+                print(f"Debug - No uploads found for date {target_date}")
+
+            print(f"Debug - Branches with uploads on {target_date}: {branches_with_upload}")
 
             # Get all possible branches from this group's historical data
             all_branches_in_group = set()
@@ -208,23 +252,34 @@ class NotificationSystem:
             # Query historical data in chunks due to Firestore limitations
             for i in range(0, len(group_corps_list), 10):
                 chunk = group_corps_list[i:i + 10]
+
+                # Use exact corporation names from the list (no case normalization in query)
                 historical_docs = self.db.collection("Uploaded_Images").where(
                     "corporations", "in", chunk
                 ).limit(1000).stream()
 
                 for doc in historical_docs:
                     data = doc.to_dict()
-                    branch = data.get("branch", "").strip()
-                    if branch:
+                    corporation = data.get("corporations", "").strip().upper()
+                    branch = data.get("branch", "").strip().upper()  # Normalize branch name
+
+                    # Double-check corporation matches (normalized comparison)
+                    if corporation in normalized_group_corps and branch:
                         all_branches_in_group.add(branch)
+
+            print(f"Debug - All branches in group: {all_branches_in_group}")
 
             # Return branches that exist in the group but haven't uploaded on target date
             branches_without_upload = all_branches_in_group - branches_with_upload
+
+            print(f"Debug - Branches without upload: {branches_without_upload}")
 
             return sorted(list(branches_without_upload))
 
         except Exception as e:
             print(f"Error getting branches without upload for {target_date}: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def open_notifications(self):

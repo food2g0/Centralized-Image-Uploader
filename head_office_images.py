@@ -2,12 +2,8 @@ def open_head_office_images(admin):
     import tkinter as tk
     from tkinter import messagebox, filedialog, ttk
     from firebase_config import db, bucket
-    from PIL import Image, ImageTk
     import requests
-    from io import BytesIO
-    from threading import Thread
     import datetime
-    from itertools import islice
     import webbrowser
     import tempfile
     import os
