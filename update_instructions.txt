@@ -23,3 +23,4 @@ backup_before_install=true
 # 2. Install new version
 # 3. Restore backed up files
 # 4. Keep existing configuration files
+# 5. Update version.txt with new version number

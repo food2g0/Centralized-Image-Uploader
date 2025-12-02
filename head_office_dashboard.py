@@ -34,7 +34,7 @@ class DepartmentTransactionManager:
 
     @staticmethod
     def has_sub_categories(department, transaction):
-        """Check if a transaction type has sub-categories"""
+        
         return len(DepartmentTransactionManager.get_sub_categories(department, transaction)) > 0
 
     @staticmethod
@@ -91,7 +91,7 @@ def create_modern_button(parent, text, command, bg_color, hover_color=None, widt
 
 
 def create_styled_frame(parent, bg_color=COLORS['white'], relief='flat', bd=1):
-    """Create a styled frame with modern appearance"""
+
     frame = tk.Frame(parent, bg=bg_color, relief=relief, bd=bd)
     return frame
 
@@ -106,7 +106,6 @@ def format_file_size(size_bytes):
 
 
 def create_corporation_section_alternative(form_frame, corporation_var, all_corporations):
-    """Alternative corporation section with simpler, more reliable filtering"""
 
     corp_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
     corp_section.pack(fill='x', pady=(0, 15), padx=5)
@@ -190,7 +189,7 @@ def create_corporation_section_alternative(form_frame, corporation_var, all_corp
             scrollbar.pack(side='right', fill='y')
 
     def on_select(event):
-        """Handle corporation selection"""
+
         selection = results_listbox.curselection()
         if selection:
             selected_corp = results_listbox.get(selection[0])
@@ -234,14 +233,11 @@ def create_corporation_section_alternative(form_frame, corporation_var, all_corp
 
 
 def open_head_office_dashboard(next_user_data):
-    """
-    Simplified Head Office upload dashboard
-    Automatically sets department based on user's department field
-    """
-    # Initialize department manager
+
+
     dept_manager = DepartmentTransactionManager()
 
-    # Get user's department from the database
+
     user_department = next_user_data.get('department', '')
     username = next_user_data.get('username', 'Unknown User')
 
@@ -252,7 +248,7 @@ def open_head_office_dashboard(next_user_data):
         file_paths = filedialog.askopenfilenames(
             title="Select Documents",
             filetypes=[
-                ("All Supported", "*.pdf"),
+                ("All Supported", "*.jpeg;*.jpg;*.png;*.pdf;"),
                 ("Documents", "*.pdf;"),
             ]
         )
@@ -452,7 +448,7 @@ def open_head_office_dashboard(next_user_data):
                         break
 
                 if exact_match:
-                    # Auto-correct the case and update the variable
+
                     corporation_var.set(exact_match)
                     selected_corp = exact_match
                 else:
@@ -528,13 +524,14 @@ def open_head_office_dashboard(next_user_data):
                             "corporation": corporation,
                             "department": user_department,  # Automatically use user's department
                             "transaction_type": final_transaction_type,
-                            "uploaded_by": uploaded_by,  # User-entered name
+                            "uploaded_by": uploaded_by,  
                             "upload_date": current_date,
                             "file_name": file_info['name'],
                             "file_url": file_url,
                             "file_size": file_info['size'],
                             "upload_batch": timestamp,
-                            "timestamp": firestore.SERVER_TIMESTAMP
+                            "timestamp": firestore.SERVER_TIMESTAMP,
+                         
                         })
 
                         file_info['status'] = 'uploaded'

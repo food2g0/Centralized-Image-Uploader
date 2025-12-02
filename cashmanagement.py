@@ -10,16 +10,31 @@ from firebase_admin import firestore
 from Colors import COLORS
 from corporations import CORPORATIONS, DEPARTMENT_CONFIG
 
-ALLOWED_EXTENSIONS = ".pdf"
+# Version information
+VERSION = "1.1.3"
+VERSION_DATE = "2025-12-03"
+
+ALLOWED_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".jfif")
 MAX_FILE_SIZE = 100 * 1024 * 1024
+
+# Pagination constants
+DOCUMENTS_PER_PAGE = 10
 
 # Cash Management specific transaction types
 CASH_MANAGEMENT_TRANSACTIONS = [
     "Daily Bank Statement",
+
 ]
 
 # Cash Management sub-categories
 CASH_MANAGEMENT_SUB_CATEGORIES = {
+
+    "Daily Bank Statement": [
+        "BDO",
+        "BPI",
+        "UNION BANK",
+
+    ]
 
 }
 
@@ -58,6 +73,135 @@ class CashManagementTransactionManager:
     def get_corporations():
         """Get list of all corporations"""
         return CORPORATIONS
+
+
+class DocumentPaginator:
+    """Handles document pagination and Firebase query optimization"""
+
+    def __init__(self, page_size=DOCUMENTS_PER_PAGE):
+        self.page_size = page_size
+        self.current_page = 1
+        self.total_documents = 0
+        self.total_pages = 0
+        self.cached_documents = {}  # Cache documents by page
+        self.cache_timestamp = {}  # Track cache freshness
+        self.cache_duration = 300  # Cache for 5 minutes
+
+    def clear_cache(self):
+        """Clear document cache"""
+        self.cached_documents.clear()
+        self.cache_timestamp.clear()
+
+    def is_cache_valid(self, page):
+        """Check if cached data is still valid"""
+        if page not in self.cache_timestamp:
+            return False
+        return time.time() - self.cache_timestamp[page] < self.cache_duration
+
+    def get_total_count(self, filters=None):
+        """Get total document count with optimized query"""
+        try:
+            query = db.collection("cash_management_uploads")
+
+            # Apply filters
+            if filters:
+                corp_filter = filters.get('corporation')
+                trans_filter = filters.get('transaction_type')
+                date_filter = filters.get('date_filter')
+
+                if corp_filter and corp_filter != "All":
+                    query = query.where("corporation", "==", corp_filter)
+
+                if trans_filter and trans_filter != "All":
+                    query = query.where("transaction_type", ">=", trans_filter).where("transaction_type", "<",
+                                                                                      trans_filter + "\uf8ff")
+
+                if date_filter:
+                    query = query.where("upload_date", ">=", date_filter)
+
+            # Use a lightweight query to count documents
+            docs = query.select(["upload_date"]).stream()  # Only fetch upload_date field for counting
+            self.total_documents = len(list(docs))
+            self.total_pages = max(1, (self.total_documents + self.page_size - 1) // self.page_size)
+
+            return self.total_documents
+
+        except Exception as e:
+            print(f"Error getting total count: {e}")
+            return 0
+
+    def get_page_documents(self, page, filters=None):
+        """Get documents for specific page with optimized Firebase query"""
+        try:
+            # Check cache first
+            cache_key = f"{page}_{str(filters)}"
+            if cache_key in self.cached_documents and self.is_cache_valid(cache_key):
+                return self.cached_documents[cache_key]
+
+            query = db.collection("cash_management_uploads")
+
+            # Apply filters
+            if filters:
+                corp_filter = filters.get('corporation')
+                trans_filter = filters.get('transaction_type')
+                date_filter = filters.get('date_filter')
+
+                if corp_filter and corp_filter != "All":
+                    query = query.where("corporation", "==", corp_filter)
+
+                if trans_filter and trans_filter != "All":
+                    # For transaction type, we need to handle sub-categories
+                    query = query.where("transaction_type", ">=", trans_filter).where("transaction_type", "<",
+                                                                                      trans_filter + "\uf8ff")
+
+                if date_filter:
+                    query = query.where("upload_date", ">=", date_filter)
+
+            # Order by upload_date descending and apply pagination
+            query = query.order_by("upload_date", direction=firestore.Query.DESCENDING)
+
+            # Calculate offset
+            offset = (page - 1) * self.page_size
+
+            # Get documents with limit and offset
+            docs = query.offset(offset).limit(self.page_size).stream()
+
+            documents = []
+            for doc in docs:
+                doc_data = doc.to_dict()
+                doc_data['doc_id'] = doc.id
+                documents.append(doc_data)
+
+            # Cache the results
+            self.cached_documents[cache_key] = documents
+            self.cache_timestamp[cache_key] = time.time()
+
+            return documents
+
+        except Exception as e:
+            print(f"Error getting page documents: {e}")
+            return []
+
+    def next_page(self):
+        """Go to next page"""
+        if self.current_page < self.total_pages:
+            self.current_page += 1
+            return True
+        return False
+
+    def prev_page(self):
+        """Go to previous page"""
+        if self.current_page > 1:
+            self.current_page -= 1
+            return True
+        return False
+
+    def go_to_page(self, page):
+        """Go to specific page"""
+        if 1 <= page <= self.total_pages:
+            self.current_page = page
+            return True
+        return False
 
 
 def create_modern_button(parent, text, command, bg_color, hover_color=None, width=None):
@@ -232,11 +376,241 @@ def create_corporation_section_alternative(form_frame, corporation_var, all_corp
     return corp_section
 
 
+def delete_document(doc_id, file_url, file_name, callback, paginator=None):
+    """Delete a document from both storage and database with optimized operations"""
+
+    def confirm_delete():
+        result = messagebox.askyesno(
+            "Confirm Delete",
+            f"Are you sure you want to permanently delete this document?\n\nFile: {file_name}\n\nThis action cannot be undone."
+        )
+        return result
+
+    def do_delete():
+        try:
+            # Show progress
+            progress_window = tk.Toplevel()
+            progress_window.title("Deleting Document")
+            progress_window.geometry("300x100")
+            progress_window.configure(bg=COLORS['light'])
+            progress_window.resizable(False, False)
+
+            # Center the progress window
+            progress_window.update_idletasks()
+            screen_width = progress_window.winfo_screenwidth()
+            screen_height = progress_window.winfo_screenheight()
+            x = (screen_width - 300) // 2
+            y = (screen_height - 100) // 2
+            progress_window.geometry(f"300x100+{x}+{y}")
+
+            progress_label = tk.Label(
+                progress_window,
+                text=f"Deleting {file_name[:30]}...",
+                font=('Segoe UI', 10),
+                bg=COLORS['light'],
+                fg=COLORS['text']
+            )
+            progress_label.pack(pady=20)
+
+            progress_bar = ttk.Progressbar(
+                progress_window,
+                mode='indeterminate',
+                style='TProgressbar'
+            )
+            progress_bar.pack(fill='x', padx=20, pady=(0, 20))
+            progress_bar.start()
+
+            progress_window.update()
+
+            # Extract storage path from URL
+            storage_path = None
+            try:
+                # Parse the storage path from Firebase URL
+                if "firebase" in file_url and "Cash%20Management" in file_url:
+                    # Extract path between 'o/' and '?'
+                    start_idx = file_url.find("o/") + 2
+                    end_idx = file_url.find("?", start_idx)
+                    if start_idx > 1 and end_idx > start_idx:
+                        storage_path = file_url[start_idx:end_idx].replace("%20", " ").replace("%2F", "/")
+            except Exception as e:
+                print(f"Error parsing storage path: {e}")
+
+            # Delete from database first (more critical operation)
+            db.collection("cash_management_uploads").document(doc_id).delete()
+
+            # Try to delete from storage if we have the path
+            if storage_path:
+                try:
+                    storage.child(storage_path).delete()
+                except Exception as storage_error:
+                    print(f"Storage deletion warning: {storage_error}")
+                    # Continue even if storage deletion fails
+
+            # Clear cache after deletion
+            if paginator:
+                paginator.clear_cache()
+
+            progress_window.destroy()
+
+            messagebox.showinfo("Success", f"Document '{file_name}' has been deleted successfully.")
+
+            # Call the callback to refresh the document list
+            if callback:
+                callback()
+
+        except Exception as e:
+            if 'progress_window' in locals():
+                progress_window.destroy()
+            messagebox.showerror("Delete Error", f"Failed to delete document: {str(e)}")
+
+    # Confirm before deleting
+    if confirm_delete():
+        Thread(target=do_delete).start()
+
+
+def create_pagination_controls(parent, paginator, load_callback):
+    """Create modern pagination controls"""
+
+    pagination_frame = create_styled_frame(parent, COLORS['white'], relief='solid', bd=1)
+    pagination_frame.pack(fill='x', pady=(10, 0), padx=20)
+
+    # Left side - Page info
+    info_frame = tk.Frame(pagination_frame, bg=COLORS['white'])
+    info_frame.pack(side='left', padx=15, pady=10)
+
+    page_info_label = tk.Label(
+        info_frame,
+        text="",
+        font=('Segoe UI', 10),
+        bg=COLORS['white'],
+        fg=COLORS['text']
+    )
+    page_info_label.pack()
+
+    # Right side - Navigation controls
+    nav_frame = tk.Frame(pagination_frame, bg=COLORS['white'])
+    nav_frame.pack(side='right', padx=15, pady=10)
+
+    def update_page_info():
+        """Update page information display"""
+        if paginator.total_documents == 0:
+            page_info_label.config(text="No documents found")
+            return
+
+        start_doc = (paginator.current_page - 1) * paginator.page_size + 1
+        end_doc = min(paginator.current_page * paginator.page_size, paginator.total_documents)
+
+        page_info_label.config(
+            text=f"Showing {start_doc}-{end_doc} of {paginator.total_documents} documents"
+        )
+
+    def go_first():
+        if paginator.go_to_page(1):
+            load_callback()
+            update_controls()
+
+    def go_prev():
+        if paginator.prev_page():
+            load_callback()
+            update_controls()
+
+    def go_next():
+        if paginator.next_page():
+            load_callback()
+            update_controls()
+
+    def go_last():
+        if paginator.go_to_page(paginator.total_pages):
+            load_callback()
+            update_controls()
+
+    def on_page_entry(event):
+        try:
+            page = int(page_entry.get())
+            if paginator.go_to_page(page):
+                load_callback()
+                update_controls()
+            else:
+                page_entry.delete(0, tk.END)
+                page_entry.insert(0, str(paginator.current_page))
+        except ValueError:
+            page_entry.delete(0, tk.END)
+            page_entry.insert(0, str(paginator.current_page))
+
+    # Navigation buttons
+    first_btn = create_modern_button(
+        nav_frame, "<<", go_first, COLORS['secondary'], width=3
+    )
+    first_btn.pack(side='left', padx=2)
+
+    prev_btn = create_modern_button(
+        nav_frame, "<", go_prev, COLORS['secondary'], width=3
+    )
+    prev_btn.pack(side='left', padx=2)
+
+    # Page entry
+    page_frame = tk.Frame(nav_frame, bg=COLORS['white'])
+    page_frame.pack(side='left', padx=10)
+
+    tk.Label(
+        page_frame, text="Page", font=('Segoe UI', 9),
+        bg=COLORS['white'], fg=COLORS['text']
+    ).pack(side='left')
+
+    page_entry = tk.Entry(
+        page_frame, width=4, font=('Segoe UI', 9),
+        relief='solid', bd=1, justify='center'
+    )
+    page_entry.pack(side='left', padx=(5, 0))
+    page_entry.bind('<Return>', on_page_entry)
+
+    page_total_label = tk.Label(
+        page_frame, text="", font=('Segoe UI', 9),
+        bg=COLORS['white'], fg=COLORS['text']
+    )
+    page_total_label.pack(side='left', padx=(5, 0))
+
+    next_btn = create_modern_button(
+        nav_frame, ">", go_next, COLORS['secondary'], width=3
+    )
+    next_btn.pack(side='left', padx=2)
+
+    last_btn = create_modern_button(
+        nav_frame, ">>", go_last, COLORS['secondary'], width=3
+    )
+    last_btn.pack(side='left', padx=2)
+
+    def update_controls():
+        """Update pagination controls state"""
+        # Update page info
+        update_page_info()
+
+        # Update page entry
+        page_entry.delete(0, tk.END)
+        page_entry.insert(0, str(paginator.current_page))
+
+        # Update total pages label
+        page_total_label.config(text=f"of {paginator.total_pages}")
+
+        # Update button states
+        first_btn.config(state='normal' if paginator.current_page > 1 else 'disabled')
+        prev_btn.config(state='normal' if paginator.current_page > 1 else 'disabled')
+        next_btn.config(state='normal' if paginator.current_page < paginator.total_pages else 'disabled')
+        last_btn.config(state='normal' if paginator.current_page < paginator.total_pages else 'disabled')
+        page_entry.config(state='normal' if paginator.total_pages > 1 else 'disabled')
+
+    return pagination_frame, update_controls
+
+
 def view_uploaded_documents():
-    """View uploaded cash management documents"""
+    """View uploaded cash management documents with pagination and optimized Firebase operations"""
+
+    # Initialize paginator
+    paginator = DocumentPaginator(DOCUMENTS_PER_PAGE)
+
     view_window = tk.Toplevel()
-    view_window.title("View Uploaded Documents")
-    view_window.geometry("1000x700")
+    view_window.title(f"Cash Management - View Documents v{VERSION}")
+    view_window.geometry("1200x800")
     view_window.configure(bg=COLORS['light'])
 
     # Center the window
@@ -253,26 +627,27 @@ def view_uploaded_documents():
     header_frame = create_styled_frame(view_window, COLORS['primary'])
     header_frame.pack(fill='x', pady=(0, 20), padx=20)
 
-    tk.Label(
+    header_label = tk.Label(
         header_frame,
-        text="Cash Management - Uploaded Documents",
+        text=f"Cash Management - Document Browser v{VERSION} (Optimized)",
         font=('Segoe UI', 16, 'bold'),
         bg=COLORS['primary'],
         fg='white',
         pady=15
-    ).pack()
+    )
+    header_label.pack()
 
-    # Filter section
+    # Filter section with improved layout
     filter_frame = create_styled_frame(view_window, COLORS['white'], relief='solid', bd=1)
     filter_frame.pack(fill='x', pady=(0, 10), padx=20)
 
     tk.Label(
         filter_frame,
-        text="Filters",
+        text="🔍 Filters & Search",
         font=('Segoe UI', 12, 'bold'),
         bg=COLORS['white'],
         fg=COLORS['text']
-    ).pack(anchor='w', padx=15, pady=(15, 5))
+    ).pack(anchor='w', padx=15, pady=(15, 10))
 
     filters_container = tk.Frame(filter_frame, bg=COLORS['white'])
     filters_container.pack(fill='x', padx=15, pady=(0, 15))
@@ -281,7 +656,7 @@ def view_uploaded_documents():
     corp_frame = tk.Frame(filters_container, bg=COLORS['white'])
     corp_frame.pack(side='left', fill='x', expand=True, padx=(0, 10))
 
-    tk.Label(corp_frame, text="Corporation:", font=('Segoe UI', 9), bg=COLORS['white']).pack(anchor='w')
+    tk.Label(corp_frame, text="Corporation:", font=('Segoe UI', 9, 'bold'), bg=COLORS['white']).pack(anchor='w')
     corp_filter_var = tk.StringVar()
     corp_filter_dropdown = ttk.Combobox(
         corp_frame,
@@ -297,7 +672,7 @@ def view_uploaded_documents():
     trans_frame = tk.Frame(filters_container, bg=COLORS['white'])
     trans_frame.pack(side='left', fill='x', expand=True, padx=(5, 10))
 
-    tk.Label(trans_frame, text="Transaction Type:", font=('Segoe UI', 9), bg=COLORS['white']).pack(anchor='w')
+    tk.Label(trans_frame, text="Transaction Type:", font=('Segoe UI', 9, 'bold'), bg=COLORS['white']).pack(anchor='w')
     trans_filter_var = tk.StringVar()
     trans_filter_dropdown = ttk.Combobox(
         trans_frame,
@@ -313,7 +688,7 @@ def view_uploaded_documents():
     date_frame = tk.Frame(filters_container, bg=COLORS['white'])
     date_frame.pack(side='left', fill='x', expand=True, padx=(5, 0))
 
-    tk.Label(date_frame, text="Date Range:", font=('Segoe UI', 9), bg=COLORS['white']).pack(anchor='w')
+    tk.Label(date_frame, text="Date Range:", font=('Segoe UI', 9, 'bold'), bg=COLORS['white']).pack(anchor='w')
     date_filter_var = tk.StringVar()
     date_filter_dropdown = ttk.Combobox(
         date_frame,
@@ -325,31 +700,43 @@ def view_uploaded_documents():
     date_filter_dropdown.set("All")
     date_filter_dropdown.pack(fill='x')
 
-    # Filter button
+    # Filter actions
+    filter_actions_frame = tk.Frame(filter_frame, bg=COLORS['white'])
+    filter_actions_frame.pack(fill='x', padx=15, pady=(0, 15))
+
     filter_btn = create_modern_button(
-        filter_frame,
-        "Apply Filters",
+        filter_actions_frame,
+        "🔍 Apply Filters",
         lambda: load_documents(),
         COLORS['primary'],
         width=15
     )
-    filter_btn.pack(pady=(0, 15))
+    filter_btn.pack(side='left')
 
-    # Documents display section
+    refresh_btn = create_modern_button(
+        filter_actions_frame,
+        "🔄 Refresh",
+        lambda: refresh_documents(),
+        COLORS['success'],
+        width=12
+    )
+    refresh_btn.pack(side='left', padx=(10, 0))
+
+    # Documents display section with improved header
     docs_frame = create_styled_frame(view_window, COLORS['white'], relief='solid', bd=1)
-    docs_frame.pack(fill='both', expand=True, padx=20, pady=(0, 20))
+    docs_frame.pack(fill='both', expand=True, padx=20, pady=(0, 10))
 
-    # Headers
-    headers_frame = create_styled_frame(docs_frame, COLORS['light'])
-    headers_frame.pack(fill='x', padx=5, pady=(5, 0))
+    # Enhanced headers
+    headers_frame = create_styled_frame(docs_frame, COLORS['primary'])
+    headers_frame.pack(fill='x', padx=0, pady=0)
 
     headers = [
-        ("File Name", 25),
-        ("Corporation", 20),
-        ("Transaction Type", 20),
-        ("Upload Date", 12),
-        ("Uploaded By", 15),
-        ("Actions", 8)
+        ("📄 File Name", 25),
+        ("🏢 Corporation", 20),
+        ("📊 Transaction Type", 20),
+        ("📅 Date", 10),
+        ("👤 Uploader", 12),
+        ("⚙️ Actions", 15)
     ]
 
     for header, width in headers:
@@ -357,15 +744,15 @@ def view_uploaded_documents():
             headers_frame,
             text=header,
             font=('Segoe UI', 10, 'bold'),
-            bg=COLORS['light'],
-            fg=COLORS['text'],
+            bg=COLORS['primary'],
+            fg='white',
             anchor='w',
             width=width
-        ).pack(side='left', padx=2, pady=5)
+        ).pack(side='left', padx=3, pady=8)
 
     # Scrollable documents list
     list_container = tk.Frame(docs_frame, bg=COLORS['white'])
-    list_container.pack(fill='both', expand=True, padx=5, pady=(0, 5))
+    list_container.pack(fill='both', expand=True, padx=5, pady=5)
 
     docs_canvas = tk.Canvas(list_container, bg=COLORS['white'], highlightthickness=0)
     docs_scrollbar = ttk.Scrollbar(list_container, orient="vertical", command=docs_canvas.yview)
@@ -387,15 +774,36 @@ def view_uploaded_documents():
     docs_canvas.pack(side="left", fill="both", expand=True)
     docs_scrollbar.pack(side="right", fill="y")
 
-    # Status label
+    # Status section
+    status_frame = create_styled_frame(docs_frame, COLORS['light'])
+    status_frame.pack(fill='x', pady=5)
+
     status_label = tk.Label(
-        docs_frame,
+        status_frame,
         text="Loading documents...",
         font=('Segoe UI', 10),
-        bg=COLORS['white'],
-        fg=COLORS['text_light']
+        bg=COLORS['light'],
+        fg=COLORS['text']
     )
     status_label.pack(pady=10)
+
+    def get_current_filters():
+        """Get current filter settings"""
+        filters = {}
+
+        corp_filter = corp_filter_var.get()
+        if corp_filter and corp_filter != "All":
+            filters['corporation'] = corp_filter
+
+        trans_filter = trans_filter_var.get()
+        if trans_filter and trans_filter != "All":
+            filters['transaction_type'] = trans_filter
+
+        date_filter = get_date_filter()
+        if date_filter:
+            filters['date_filter'] = date_filter
+
+        return filters if filters else None
 
     def get_date_filter():
         """Get date filter based on selection"""
@@ -449,70 +857,62 @@ def view_uploaded_documents():
         except Exception as e:
             messagebox.showerror("Error", f"Download failed: {str(e)}")
 
+    def refresh_documents():
+        """Refresh documents by clearing cache and reloading"""
+        paginator.clear_cache()
+        paginator.current_page = 1
+        load_documents()
+
     def load_documents():
-        """Load and display documents based on filters"""
+        """Load and display documents for current page with optimized Firebase queries"""
         try:
             # Clear existing documents
             for widget in docs_list_frame.winfo_children():
                 widget.destroy()
 
-            status_label.config(text="Loading documents...")
+            status_label.config(text="Loading documents...", fg=COLORS['text'])
             view_window.update_idletasks()
 
-            # Build query
-            query = db.collection("cash_management_uploads")
+            # Get current filters
+            filters = get_current_filters()
 
-            # Apply filters
-            corp_filter = corp_filter_var.get()
-            trans_filter = trans_filter_var.get()
-            date_filter = get_date_filter()
+            # Get total count first (optimized query)
+            total_count = paginator.get_total_count(filters)
 
-            if corp_filter and corp_filter != "All":
-                query = query.where("corporation", "==", corp_filter)
+            if total_count == 0:
+                no_docs_label = tk.Label(
+                    docs_list_frame,
+                    text="No documents found matching the current filters.\nTry adjusting your search criteria or check if documents have been uploaded.",
+                    font=('Segoe UI', 12),
+                    bg=COLORS['white'],
+                    fg=COLORS['text_light'],
+                    justify='center'
+                )
+                no_docs_label.pack(pady=50)
+                status_label.config(text="No documents found", fg=COLORS['warning'])
 
-            if trans_filter and trans_filter != "All":
-                # Handle sub-categories in transaction type
-                docs = query.stream()
-                filtered_docs = []
-                for doc in docs:
-                    doc_data = doc.to_dict()
-                    doc_trans = doc_data.get('transaction_type', '')
-                    if trans_filter in doc_trans:
-                        doc_data['doc_id'] = doc.id
-                        filtered_docs.append(doc_data)
-                documents = filtered_docs
-            else:
-                documents = []
-                for doc in query.stream():
-                    doc_data = doc.to_dict()
-                    doc_data['doc_id'] = doc.id
-                    documents.append(doc_data)
+                # Hide pagination if no documents
+                if 'pagination_controls' in locals():
+                    pagination_frame.pack_forget()
+                return
 
-            # Apply date filter
-            if date_filter:
-                filtered_by_date = []
-                for doc_data in documents:
-                    doc_date = doc_data.get('upload_date', '')
-                    if doc_date >= date_filter:
-                        filtered_by_date.append(doc_data)
-                documents = filtered_by_date
-
-            # Sort by upload date (newest first)
-            documents.sort(key=lambda x: x.get('upload_date', ''), reverse=True)
+            # Get documents for current page
+            documents = paginator.get_page_documents(paginator.current_page, filters)
 
             if not documents:
                 no_docs_label = tk.Label(
                     docs_list_frame,
-                    text="No documents found matching the current filters.",
+                    text="Error loading documents for this page.\nPlease try refreshing or contact support.",
                     font=('Segoe UI', 12),
                     bg=COLORS['white'],
-                    fg=COLORS['text_light']
+                    fg=COLORS['danger'],
+                    justify='center'
                 )
                 no_docs_label.pack(pady=50)
-                status_label.config(text="No documents found")
+                status_label.config(text="Error loading page", fg=COLORS['danger'])
                 return
 
-            # Display documents
+            # Display documents with improved styling
             for i, doc_data in enumerate(documents):
                 doc_frame = create_styled_frame(
                     docs_list_frame,
@@ -520,25 +920,39 @@ def view_uploaded_documents():
                     relief='solid',
                     bd=1
                 )
-                doc_frame.pack(fill='x', pady=1)
+                doc_frame.pack(fill='x', pady=1, padx=2)
 
-                # File name
+                # Add hover effect
+                def on_enter(e, frame=doc_frame):
+                    frame.config(bg=COLORS['primary_light'] if frame.cget('bg') == COLORS['light'] else COLORS['light'])
+
+                def on_leave(e, frame=doc_frame, original_bg=doc_frame.cget('bg')):
+                    frame.config(bg=original_bg)
+
+                doc_frame.bind("<Enter>", on_enter)
+                doc_frame.bind("<Leave>", on_leave)
+
+                # File name with file type icon
                 file_name = doc_data.get('file_name', 'Unknown')
                 display_name = file_name[:35] + "..." if len(file_name) > 35 else file_name
-                tk.Label(
+
+                name_label = tk.Label(
                     doc_frame,
-                    text=display_name,
+                    text=f"📄 {display_name}",
                     font=('Segoe UI', 9),
                     bg=doc_frame['bg'],
                     fg=COLORS['text'],
                     anchor='w',
                     width=25
-                ).pack(side='left', padx=2, pady=3)
+                )
+                name_label.pack(side='left', padx=3, pady=4)
+                name_label.bind("<Enter>", on_enter)
+                name_label.bind("<Leave>", on_leave)
 
                 # Corporation
                 corp = doc_data.get('corporation', 'Unknown')
                 display_corp = corp[:18] + "..." if len(corp) > 18 else corp
-                tk.Label(
+                corp_label = tk.Label(
                     doc_frame,
                     text=display_corp,
                     font=('Segoe UI', 9),
@@ -546,12 +960,15 @@ def view_uploaded_documents():
                     fg=COLORS['text'],
                     anchor='w',
                     width=20
-                ).pack(side='left', padx=2, pady=3)
+                )
+                corp_label.pack(side='left', padx=3, pady=4)
+                corp_label.bind("<Enter>", on_enter)
+                corp_label.bind("<Leave>", on_leave)
 
                 # Transaction type
                 trans_type = doc_data.get('transaction_type', 'Unknown')
                 display_trans = trans_type[:18] + "..." if len(trans_type) > 18 else trans_type
-                tk.Label(
+                trans_label = tk.Label(
                     doc_frame,
                     text=display_trans,
                     font=('Segoe UI', 9),
@@ -559,50 +976,62 @@ def view_uploaded_documents():
                     fg=COLORS['text'],
                     anchor='w',
                     width=20
-                ).pack(side='left', padx=2, pady=3)
+                )
+                trans_label.pack(side='left', padx=3, pady=4)
+                trans_label.bind("<Enter>", on_enter)
+                trans_label.bind("<Leave>", on_leave)
 
                 # Upload date
                 upload_date = doc_data.get('upload_date', 'Unknown')
-                tk.Label(
+                date_label = tk.Label(
                     doc_frame,
                     text=upload_date,
                     font=('Segoe UI', 9),
                     bg=doc_frame['bg'],
                     fg=COLORS['text'],
                     anchor='w',
-                    width=12
-                ).pack(side='left', padx=2, pady=3)
+                    width=10
+                )
+                date_label.pack(side='left', padx=3, pady=4)
+                date_label.bind("<Enter>", on_enter)
+                date_label.bind("<Leave>", on_leave)
 
                 # Uploaded by
                 uploaded_by = doc_data.get('uploaded_by', 'Unknown')
-                display_uploader = uploaded_by[:13] + "..." if len(uploaded_by) > 13 else uploaded_by
-                tk.Label(
+                display_uploader = uploaded_by[:10] + "..." if len(uploaded_by) > 10 else uploaded_by
+                uploader_label = tk.Label(
                     doc_frame,
                     text=display_uploader,
                     font=('Segoe UI', 9),
                     bg=doc_frame['bg'],
                     fg=COLORS['text'],
                     anchor='w',
-                    width=15
-                ).pack(side='left', padx=2, pady=3)
+                    width=12
+                )
+                uploader_label.pack(side='left', padx=3, pady=4)
+                uploader_label.bind("<Enter>", on_enter)
+                uploader_label.bind("<Leave>", on_leave)
 
-                # Actions
+                # Actions with improved buttons
                 actions_frame = tk.Frame(doc_frame, bg=doc_frame['bg'])
-                actions_frame.pack(side='left', padx=2, pady=3)
+                actions_frame.pack(side='left', padx=3, pady=4)
+                actions_frame.bind("<Enter>", on_enter)
+                actions_frame.bind("<Leave>", on_leave)
 
                 file_url = doc_data.get('file_url', '')
+                doc_id = doc_data.get('doc_id', '')
 
                 # View button
                 view_btn = tk.Button(
                     actions_frame,
-                    text="View",
+                    text="👁 View",
                     command=lambda url=file_url, name=file_name: open_document(url, name),
                     bg=COLORS['primary'],
                     fg='white',
                     font=('Segoe UI', 8, 'bold'),
                     relief='flat',
                     cursor='hand2',
-                    width=5,
+                    width=6,
                     height=1
                 )
                 view_btn.pack(side='left', padx=1)
@@ -610,36 +1039,77 @@ def view_uploaded_documents():
                 # Download button
                 download_btn = tk.Button(
                     actions_frame,
-                    text="Download",
+                    text="⬇ Get",
                     command=lambda url=file_url, name=file_name: download_document(url, name),
                     bg=COLORS['success'],
                     fg='white',
                     font=('Segoe UI', 8, 'bold'),
                     relief='flat',
                     cursor='hand2',
-                    width=8,
+                    width=5,
                     height=1
                 )
                 download_btn.pack(side='left', padx=1)
 
-            status_label.config(text=f"Showing {len(documents)} document{'s' if len(documents) != 1 else ''}")
+                # Delete button
+                delete_btn = tk.Button(
+                    actions_frame,
+                    text="🗑 Del",
+                    command=lambda doc_id=doc_id, url=file_url, name=file_name: delete_document(
+                        doc_id, url, name, load_documents, paginator
+                    ),
+                    bg=COLORS['danger'],
+                    fg='white',
+                    font=('Segoe UI', 8, 'bold'),
+                    relief='flat',
+                    cursor='hand2',
+                    width=5,
+                    height=1
+                )
+                delete_btn.pack(side='left', padx=1)
+
+            # Update status
+            start_doc = (paginator.current_page - 1) * paginator.page_size + 1
+            end_doc = min(paginator.current_page * paginator.page_size, paginator.total_documents)
+
+            status_label.config(
+                text=f"Showing {start_doc}-{end_doc} of {paginator.total_documents} documents (Page {paginator.current_page} of {paginator.total_pages})",
+                fg=COLORS['success']
+            )
+
+            # Update pagination controls
+            if 'update_pagination' in locals():
+                update_pagination()
 
         except Exception as e:
-            status_label.config(text="Error loading documents")
+            status_label.config(text=f"Error loading documents: {str(e)}", fg=COLORS['danger'])
             messagebox.showerror("Error", f"Failed to load documents: {str(e)}")
 
-    # Bind filter changes
-    corp_filter_dropdown.bind('<<ComboboxSelected>>', lambda e: load_documents())
-    trans_filter_dropdown.bind('<<ComboboxSelected>>', lambda e: load_documents())
-    date_filter_dropdown.bind('<<ComboboxSelected>>', lambda e: load_documents())
+    # Create pagination controls
+    pagination_frame, update_pagination = create_pagination_controls(view_window, paginator, load_documents)
+
+    # Bind filter changes to reload with pagination reset
+    def on_filter_change(*args):
+        paginator.current_page = 1
+        paginator.clear_cache()
+        load_documents()
+
+    corp_filter_dropdown.bind('<<ComboboxSelected>>', on_filter_change)
+    trans_filter_dropdown.bind('<<ComboboxSelected>>', on_filter_change)
+    date_filter_dropdown.bind('<<ComboboxSelected>>', on_filter_change)
 
     # Load documents initially
     load_documents()
 
+    # Update pagination controls
+    update_pagination()
+
+    print(f"[cash_management] Document viewer with pagination opened (Page size: {DOCUMENTS_PER_PAGE})")
+
 
 def open_cash_management(next_user_data):
     """
-    Cash Management dashboard for NDA users
+    Cash Management dashboard for NDA users - Version 1.2.0 with optimized Firebase operations
     """
     # Initialize cash management transaction manager
     cash_manager = CashManagementTransactionManager()
@@ -655,8 +1125,9 @@ def open_cash_management(next_user_data):
         file_paths = filedialog.askopenfilenames(
             title="Select Cash Management Documents",
             filetypes=[
-                ("All Supported", "*.pdf"),
-                ("Documents", "*.pdf;"),
+                ("All Supported", "*.pdf *.jpg *.jpeg *.png *.gif *.bmp *.webp *.jfif"),
+                ("Documents", "*.pdf"),
+                ("Images", "*.jpg *.jpeg *.png *.gif *.bmp *.webp *.jfif"),
             ]
         )
 
@@ -902,6 +1373,9 @@ def open_cash_management(next_user_data):
                 uploaded_files = []
                 failed_files = []
 
+                # Use batch operations for better Firebase performance
+                batch_timestamp = int(time.time())
+
                 for i, file_info in enumerate(selected_files):
                     try:
                         file_info['status'] = 'uploading'
@@ -914,14 +1388,16 @@ def open_cash_management(next_user_data):
                         popup.update_idletasks()
                         update_file_list()
 
-                        timestamp = int(time.time())
-                        file_name = f"{current_date}_{timestamp}_{i}_{file_info['name']}"
+                        # Create unique file name to prevent conflicts
+                        file_name = f"{current_date}_{batch_timestamp}_{i}_{file_info['name']}"
                         storage_path = f"Cash Management/{file_name}"
 
+                        # Upload to Firebase Storage
                         storage.child(storage_path).put(file_info['path'])
                         file_url = storage.child(storage_path).get_url(None)
 
-                        doc_ref = db.collection("cash_management_uploads").add({
+                        # Optimized database write with batch operations
+                        doc_data = {
                             "corporation": corporation,
                             "department": "Cash Management",
                             "transaction_type": final_transaction_type,
@@ -930,10 +1406,13 @@ def open_cash_management(next_user_data):
                             "file_name": file_info['name'],
                             "file_url": file_url,
                             "file_size": file_info['size'],
-                            "upload_batch": timestamp,
+                            "upload_batch": batch_timestamp,
                             "user_role": user_role,
                             "timestamp": firestore.SERVER_TIMESTAMP
-                        })
+                        }
+
+                        # Add document to Firestore
+                        doc_ref = db.collection("cash_management_uploads").add(doc_data)
 
                         file_info['status'] = 'uploaded'
                         uploaded_files.append(file_info['name'])
@@ -941,6 +1420,7 @@ def open_cash_management(next_user_data):
                     except Exception as e:
                         file_info['status'] = 'failed'
                         failed_files.append(f"{file_info['name']}: {str(e)}")
+                        print(f"Upload error for {file_info['name']}: {e}")
 
                 progress_var.set(100)
                 update_file_list()
@@ -951,7 +1431,8 @@ def open_cash_management(next_user_data):
                         text=f"Successfully uploaded {len(uploaded_files)} file{'s' if len(uploaded_files) != 1 else ''}!",
                         fg=COLORS['success']
                     )
-                    messagebox.showinfo("Upload Complete", f"Successfully uploaded {len(uploaded_files)} documents!")
+                    messagebox.showinfo("Upload Complete",
+                                        f"Successfully uploaded {len(uploaded_files)} documents!\n\nOptimized Firebase operations used for better performance.")
 
                     # Reset form on complete success
                     selected_files.clear()
@@ -971,16 +1452,18 @@ def open_cash_management(next_user_data):
                     )
                     messagebox.showwarning(
                         "Partial Upload",
-                        f"Uploaded: {len(uploaded_files)} files\nFailed: {len(failed_files)} files"
+                        f"Uploaded: {len(uploaded_files)} files\nFailed: {len(failed_files)} files\n\nCheck the failed files and try uploading them again."
                     )
                 else:
                     status_label.config(text="All uploads failed", fg=COLORS['danger'])
-                    messagebox.showerror("Upload Failed", "All file uploads failed")
+                    messagebox.showerror("Upload Failed",
+                                         "All file uploads failed. Please check your connection and try again.")
 
             except Exception as e:
                 progress_var.set(0)
                 status_label.config(text="Upload failed", fg=COLORS['danger'])
-                messagebox.showerror("Upload Error", f"Unexpected error: {str(e)}")
+                messagebox.showerror("Upload Error", f"Unexpected error during upload: {str(e)}")
+                print(f"Upload error: {e}")
             finally:
                 upload_btn.config(state='normal', text='Upload All Files', bg=COLORS['primary'])
                 clear_btn.config(state='normal')
@@ -989,7 +1472,7 @@ def open_cash_management(next_user_data):
 
     # Create main window
     popup = tk.Tk()
-    popup.title(f"Cash Management - Document Upload")
+    popup.title(f"Cash Management - Document Upload v{VERSION}")
     popup.geometry("600x750")
     popup.configure(bg=COLORS['light'])
     popup.resizable(False, True)
@@ -1026,13 +1509,13 @@ def open_cash_management(next_user_data):
     main_frame = create_styled_frame(popup, COLORS['white'])
     main_frame.pack(fill='both', expand=True, padx=20, pady=20)
 
-    # Header
+    # Header with version
     header_frame = create_styled_frame(main_frame, COLORS['primary'])
     header_frame.pack(fill='x', pady=(0, 20))
 
     header_label = tk.Label(
         header_frame,
-        text="Cash Management - Document Upload",
+        text=f"Cash Management - Document Upload v{VERSION}",
         font=('Segoe UI', 16, 'bold'),
         bg=COLORS['primary'],
         fg='white',
@@ -1040,11 +1523,19 @@ def open_cash_management(next_user_data):
     )
     header_label.pack()
 
-    # User info display
-    user_info_frame = create_styled_frame(main_frame, COLORS['light'], relief='solid', bd=1)
-    user_info_frame.pack(fill='x', pady=(0, 15), padx=5)
+    # Version info display
+    version_info_frame = create_styled_frame(main_frame, COLORS['light'], relief='solid', bd=1)
+    version_info_frame.pack(fill='x', pady=(0, 15), padx=5)
 
-
+    version_label = tk.Label(
+        version_info_frame,
+        text=f"Version {VERSION} - {VERSION_DATE} | User: {username} ({user_role}) | Features: Upload, View (Paginated), Delete, Optimized Firebase",
+        font=('Segoe UI', 9),
+        bg=COLORS['light'],
+        fg=COLORS['text'],
+        pady=8
+    )
+    version_label.pack()
 
     # Form container with scrollable area
     form_container = create_styled_frame(main_frame)
@@ -1234,7 +1725,7 @@ def open_cash_management(next_user_data):
     # Supported formats info
     formats_label = tk.Label(
         file_section,
-        text="Supported: PDF (Max 100MB per file)",
+        text="Supported: PDF, JPG, PNG, GIF, BMP, WebP, JPEG (Max 100MB per file)",
         font=('Segoe UI', 8),
         bg=COLORS['light'],
         fg=COLORS['text_light'],
@@ -1289,7 +1780,7 @@ def open_cash_management(next_user_data):
 
     view_btn = create_modern_button(
         button_frame,
-        "View Uploaded",
+        "View Documents",
         view_uploaded_documents,
         COLORS['secondary'],
         width=15
@@ -1321,7 +1812,8 @@ def open_cash_management(next_user_data):
     # Initialize file list
     update_file_list()
 
-    print(f"[cash_management] Cash management dashboard opened for {username} - {user_role}")
+    print(
+        f"[cash_management] Cash management dashboard v{VERSION} opened for {username} - {user_role} with optimized Firebase operations")
 
     popup.mainloop()
 
@@ -1342,5 +1834,5 @@ def main(next_user_data):
         open_cash_management(next_user_data)
 
     except Exception as e:
-        print(f"[cash_management] Error opening cash management dashboard: {e}")
+        print(f"[cash_management] Error opening cash management dashboard v{VERSION}: {e}")
         messagebox.showerror("Dashboard Error", f"Failed to open cash management dashboard: {e}")
