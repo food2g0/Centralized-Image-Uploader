@@ -54,7 +54,8 @@ CORPORATIONS = [
     "SAINT BARBARA PRIME PAWNSHOP INC.",
     "SAN RAMON PLATINUM PAWNSHOP INC.",
     "SILVERSTAR JEWELRY PAWNSHOP INC.",
-    "GLOBAL RELIANCE MANAGEMENT & HOLDINGS CORP."
+    "GLOBAL RELIANCE MANAGEMENT & HOLDINGS CORP.",
+    "EUROPACIFIC MANAGEMENT & HOLDINGS CORP.",
 ]
 
 DEPARTMENT_CONFIG = {
@@ -67,18 +68,18 @@ DEPARTMENT_CONFIG = {
             "Auction Sales Book",
             "ADS for auction",
             "BIR 2551Q (GRT) Rem/Auction/MC",
-            "BIR 1601 EQ (expanded rent)",
-            "Alphalist Data Entry (1601EQ) rental",
+            "BIR 1601 EQ /Alphalist Data Entry (1601EQ)",
             "BIR 1702Q (Income Tax)",
             "QVVR",
             "Gross Income for Business Permit",
             "BIR 1604C",
-            "Alphalist Data Entry (1604E)",
+            "BIR 1604E/Alphalist Data Entry (1604E)",
             "BIR 2316 (emp ITR)",
             "BIR 1702RT (ITR/FS)",
             "SEC",
             "BSP",
             "BIR",
+            "2550Q (Global)",
             "Books of Account"
         ],
         "sub_categories": {
@@ -188,7 +189,8 @@ DEPARTMENT_CONFIG = {
             "AMLC Certificate",
             "PERMITS",
             "STB",
-            "MTPP"
+            "MTPP",
+            "Palawan Contract"
         ]
     },
     "Operation Department": {
@@ -209,7 +211,8 @@ DEPARTMENT_CONFIG = {
         "transactions": [
             
             "MONTHLY REPORT",
-            "MC Trading report with SI from Jayhana"
+            "MC Trading report with SI from Jayhana",
+            "USD"
         ],
      
     },
@@ -233,13 +236,26 @@ DEPARTMENT_CONFIG = {
         "sub_categories": {
             "External Audit": [
                 "IR",
-                "Audit Findings"
+                "Audit Findings",
+                "Branch Cash Count",
+                "Audit Appraisal-Jewelry",
+                "Audit Appraisal-Silver",
+                "Incedent Report",
+                "Rematado Masterlist",
+                "Checklist",
+                "Inventory",
+                "Audit Appraisal-Storage",
+                "Sales Audit Findings",
             ],
             "Internal Audit": [
                 "Action Plan",
                 "Audit Report",
                 "GAP Analysis",
-                "Turnover of Records"
+                "Turnover of Records",
+                "O.A./Fake for Salary Deduction",
+                "Incident Report Penalty/Incentives",
+                "Vault Combination Report/Incentives"
+            
             ]
         }
     },
@@ -250,7 +266,9 @@ DEPARTMENT_CONFIG = {
             "Inventory",
             
         ],
-        "sub_categories": {}
+        "sub_categories": {
+
+        }
     },
     "Executive": {
         "icon": "💻",
@@ -269,9 +287,17 @@ DEPARTMENT_CONFIG = {
     "Cash Management A/R Department": {
         "icon": "💻",
         "transactions": [
-
+            "Daily Bank Statement"
         ],
-        "sub_categories": {}
+        "sub_categories": {
+
+            "Daily Bank Statement": [
+                "BDO",
+                "BPI",
+                "UNION BANK",
+
+            ]
+        }
     },
     "BDD Department": {
         "icon": "💻",

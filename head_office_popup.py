@@ -92,7 +92,7 @@ def create_modern_button(parent, text, command, bg_color, hover_color=None, widt
 
 
 def create_styled_frame(parent, bg_color=COLORS['white'], relief='flat', bd=1):
-    """Create a styled frame with modern appearance"""
+
     frame = tk.Frame(parent, bg=bg_color, relief=relief, bd=bd)
     return frame
 
@@ -118,7 +118,7 @@ def open_head_office_popup(parent_admin):
         file_paths = filedialog.askopenfilenames(
             title="Select Documents",
             filetypes=[
-                ("All Supported", "*.pdf"),
+                ("All Supported", "*.jpeg;*.jpg;*.png;*.pdf;"),
                 ("Documents", "*.pdf;"),
 
             ]

@@ -15,7 +15,7 @@ def open_admin_dashboard_group3(admin_data):
     from notification_system import NotificationSystem
     import threading
     from typing import Dict, List, Optional, Tuple, Any
-
+    VERSION = "1.1.3"
 
     class OptimizedFirestoreManager:
 
@@ -428,7 +428,7 @@ def open_admin_dashboard_group3(admin_data):
         return optimizer, app_state, load_page_data, optimized_search, bulk_delete_optimized
 
     admin = tk.Tk()
-    admin.title("Admin Dashboard - Record Management System")
+    admin.title(f"Admin Dashboard - Record Management System v{VERSION}")
     admin.state('zoomed')
     admin.configure(bg="#f8fafc")
 
@@ -1726,6 +1726,7 @@ def open_admin_dashboard_group3(admin_data):
                     ("Transaction Date", file_data.get("date", ""), COLORS['muted']),
                     ("Transaction Type", file_data.get("transaction_type", ""), COLORS['muted']),
                     ("Date Uploaded", format_timestamp(file_data.get("timestamp", "")), COLORS['muted']),
+                    ("Lotes", file_data.get("palawan_reference", "N/A"), COLORS['muted']),
                 ]
 
                 for label, val, text_color in info_data:

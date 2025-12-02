@@ -16,7 +16,7 @@ def open_admin_dashboard_group1(admin_data):
     import threading
     from typing import Dict, List, Optional, Tuple, Any
 
-
+    VERSION = "1.1.3"
     class OptimizedFirestoreManager:
 
 
@@ -403,32 +403,33 @@ def open_admin_dashboard_group1(admin_data):
                 return [], None, False
 
         def optimized_search(search_term, context):
-            """Optimized search function"""
+
             if not search_term.strip():
                 return app_state.current_data
 
             return optimizer.search_documents_optimized(search_term, context)
 
         def bulk_delete_optimized(selected_doc_ids):
-            """Optimized bulk delete operation"""
+
             operations = [{"type": "delete", "doc_id": doc_id} for doc_id in selected_doc_ids]
 
             return optimizer.bulk_operation_optimized(operations)
 
-        # Periodic cache cleanup
+
         def schedule_cache_cleanup():
-            """Schedule periodic cache cleanup"""
+
             optimizer.clear_cache_smart()
-            # Schedule next cleanup in 10 minutes
+
             admin.after(600000, schedule_cache_cleanup)
 
-        # Start cache cleanup scheduler
-        admin.after(600000, schedule_cache_cleanup)  # Start after 10 minutes
+
+        admin.after(600000, schedule_cache_cleanup)
 
         return optimizer, app_state, load_page_data, optimized_search, bulk_delete_optimized
 
     admin = tk.Tk()
-    admin.title("Admin Dashboard - Record Management System")
+
+    admin.title(f"Admin Dashboard - Record Management System v{VERSION}")
     admin.state('zoomed')
     admin.configure(bg="#f8fafc")
 
@@ -451,16 +452,16 @@ def open_admin_dashboard_group1(admin_data):
     def get_font_size(base_size):
         return max(8, int(base_size * font_scale))
 
-    # Initialize notification system
+
     notification_system = NotificationSystem(admin, admin_data)
 
-    # Initialize global variables early to prevent NameError
+
     current_loaded_data = []
     current_context = {"type": None, "value": None}
     image_refs = []
     branches = set()
 
-    # Responsive ttk styles
+
     style = ttk.Style()
     style.theme_use('clam')
 
@@ -475,9 +476,9 @@ def open_admin_dashboard_group1(admin_data):
     style.map('Modern.TButton',
               background=[('active', '#2563eb'), ('pressed', '#1d4ed8')])
 
-    # Function to determine file type and return appropriate default icon
+
     def get_file_icon(filename):
-        """Return appropriate icon/text based on file extension"""
+
         if not filename:
             return "📄", "Unknown File"
 
@@ -495,19 +496,19 @@ def open_admin_dashboard_group1(admin_data):
         else:
             return "📄", "Document"
 
-    # Create default image function
+
     def create_default_image(icon, file_type, size=(200, 200)):
         """Create a default image with icon and file type text"""
         # Create a simple colored background image
         img = Image.new('RGB', size, color='#f1f5f9')
         return img
 
-    # Responsive sidebar
+
     sidebar = tk.Frame(admin, width=sidebar_width, bg=COLORS['sidebar'], relief="flat")
     sidebar.pack(side="left", fill="y")
     sidebar.pack_propagate(False)
 
-    # Responsive hamburger button
+
     hamburger_btn = tk.Button(
         admin,
         text="☰",
@@ -527,11 +528,11 @@ def open_admin_dashboard_group1(admin_data):
     main_frame = tk.Frame(admin, bg=COLORS['background'])
     main_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=responsive_padding, pady=responsive_padding)
 
-    # Responsive header with refresh and notification buttons
+
     header_frame = tk.Frame(main_frame, bg=COLORS['surface'], relief="flat", bd=1)
     header_frame.pack(fill="x", pady=(0, responsive_padding), ipady=int(15 * font_scale))
 
-    # Title section
+
     title_frame = tk.Frame(header_frame, bg=COLORS['surface'])
     title_frame.pack(side="left", fill="both", expand=True)
 
@@ -543,7 +544,7 @@ def open_admin_dashboard_group1(admin_data):
         fg=COLORS['text']
     ).pack(pady=int(10 * font_scale))
 
-    # Buttons frame in top right (now contains both refresh and notification buttons)
+
     buttons_frame = tk.Frame(header_frame, bg=COLORS['surface'])
     buttons_frame.pack(side="right", padx=int(20 * font_scale), pady=int(10 * font_scale))
 
@@ -555,7 +556,7 @@ def open_admin_dashboard_group1(admin_data):
     viewer_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=(0, int(10 * font_scale)))
     viewer_frame.pack_propagate(False)
 
-    # Responsive canvas with scrollbar
+
     canvas = tk.Canvas(viewer_frame, bg=COLORS['surface'], highlightthickness=0, bd=0)
 
     scrollbar_width = max(12, int(16 * font_scale))
@@ -587,11 +588,11 @@ def open_admin_dashboard_group1(admin_data):
     canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux wheel up
     canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux wheel down
 
-    # Also bind to the scroll_frame and main elements for better coverage
+
     scroll_frame.bind("<MouseWheel>", _on_mousewheel)
     main_frame.bind("<MouseWheel>", _on_mousewheel)
 
-    # Make sure the canvas can receive focus for mouse events
+
     canvas.focus_set()
 
     def bind_mousewheel_to_main_widgets(widget, visited=None, depth=0):
@@ -599,8 +600,8 @@ def open_admin_dashboard_group1(admin_data):
         if visited is None:
             visited = set()
 
-        # Prevent infinite recursion with depth limit
-        if depth > 50:  # Reasonable maximum depth
+
+        if depth > 50:  #
             return
 
         # Prevent cycles
@@ -610,16 +611,16 @@ def open_admin_dashboard_group1(admin_data):
         visited.add(widget_id)
 
         try:
-            # Only bind if widget still exists and is valid
+
             if widget.winfo_exists():
                 widget.bind("<MouseWheel>", _on_mousewheel)
                 widget.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
                 widget.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
         except (tk.TclError, RuntimeError, AttributeError):
-            # Widget is destroyed or invalid, skip it
+
             return
 
-        # Recursively bind children with depth tracking
+
         try:
             children = widget.winfo_children()
             for child in children:
@@ -628,12 +629,12 @@ def open_admin_dashboard_group1(admin_data):
             # Widget or children are destroyed, skip
             pass
 
-    # OPTIMIZED FIREBASE DATA LOADING - ON-DEMAND APPROACH
+
 
     def load_branches_only():
-        """Load only unique branches for the sidebar - lightweight query"""
+
         try:
-            # Get all documents but only fetch branch field to minimize data transfer
+
             docs = db.collection("Uploaded_Images").where("corporations", "in", group1_corporations).stream()
 
             branches_set = set()
@@ -641,7 +642,7 @@ def open_admin_dashboard_group1(admin_data):
 
             for doc in docs:
                 doc_count += 1
-                if doc_count > 50000:  # Reasonable limit for branch discovery
+                if doc_count > 50000:
                     break
 
                 data = doc.to_dict()
@@ -658,7 +659,7 @@ def open_admin_dashboard_group1(admin_data):
 
     def load_branch_data(branch_name):
         try:
-            # Query only documents for this specific branch
+
             docs = db.collection("Uploaded_Images").where("branch", "==", branch_name).stream()
 
             branch_data = []
@@ -666,7 +667,7 @@ def open_admin_dashboard_group1(admin_data):
 
             for doc in docs:
                 doc_count += 1
-                # Get ALL documents for the selected branch - no limit
+
                 data = doc.to_dict()
                 if data:
                     data["doc_id"] = doc.id
@@ -679,9 +680,9 @@ def open_admin_dashboard_group1(admin_data):
             return []
 
     def load_corporation_data(corporation_name):
-        """Load data for a specific corporation across all branches"""
+
         try:
-            # Query only documents for this specific corporation
+
             docs = db.collection("Uploaded_Images").where("corporations", "==", corporation_name).stream()
 
             corp_data = []
@@ -689,7 +690,7 @@ def open_admin_dashboard_group1(admin_data):
 
             for doc in docs:
                 doc_count += 1
-                # Get ALL documents for the selected corporation - no limit
+
                 data = doc.to_dict()
                 if data:
                     data["doc_id"] = doc.id
@@ -705,9 +706,9 @@ def open_admin_dashboard_group1(admin_data):
     available_branches = load_branches_only()
     branches.update(available_branches)
 
-    # IMPROVED REFRESH FUNCTION WITH ON-DEMAND LOADING
+
     def refresh_data():
-        """Enhanced refresh with on-demand loading"""
+
         current_time = time.time()
 
         # Prevent rapid successive calls
@@ -1726,6 +1727,7 @@ def open_admin_dashboard_group1(admin_data):
                     ("Transaction Date", file_data.get("date", ""), COLORS['muted']),
                     ("Transaction Type", file_data.get("transaction_type", ""), COLORS['muted']),
                     ("Date Uploaded", format_timestamp(file_data.get("timestamp", "")), COLORS['muted']),
+                    ("Lotes", file_data.get("palawan_reference", "N/A"), COLORS['muted']),
                 ]
 
                 for label, val, text_color in info_data:
@@ -2441,7 +2443,7 @@ def open_admin_dashboard_group1(admin_data):
 
     # SAFE WIDGET CLEANUP FUNCTION
     def cleanup_widgets():
-        """Clean up widgets and prevent memory leaks"""
+
         try:
             # Clear image references
             image_refs.clear()

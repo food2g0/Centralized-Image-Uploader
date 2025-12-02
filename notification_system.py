@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
+import calendar  # Add this line
 from Colors import COLORS
 from datetime import datetime, timedelta
 import firebase_admin
@@ -10,10 +11,271 @@ import time
 
 try:
     from tkcalendar import DateEntry
-
     HAS_DATE_PICKER = True
 except ImportError:
     HAS_DATE_PICKER = False
+
+
+class CustomCalendar:
+    def __init__(self, parent, textvariable, **kwargs):
+        self.textvariable = textvariable
+        self.parent = parent
+        self.callback = kwargs.get('callback', None)
+
+        # Initial date
+        initial_date = kwargs.get('initial_date', datetime.now())
+        self.current_month = initial_date.month
+        self.current_year = initial_date.year
+        self.selected_date = initial_date
+
+        # Main frame
+        self.cal_frame = tk.Frame(parent, bg='white', relief='solid', bd=1)
+        self.setup_calendar()
+
+    def setup_calendar(self):
+        # Clear existing widgets
+        for widget in self.cal_frame.winfo_children():
+            widget.destroy()
+
+        # Header with navigation
+        header_frame = tk.Frame(self.cal_frame, bg='#2196F3')
+        header_frame.pack(fill='x')
+
+        # Previous month button
+        tk.Button(
+            header_frame,
+            text='<',
+            font=('Arial', 12, 'bold'),
+            bg='#2196F3',
+            fg='white',
+            bd=0,
+            cursor='hand2',
+            command=self.prev_month
+        ).pack(side='left', padx=5, pady=5)
+
+        # Month/Year display
+        month_year_text = f"{calendar.month_name[self.current_month]} {self.current_year}"
+        tk.Label(
+            header_frame,
+            text=month_year_text,
+            font=('Arial', 12, 'bold'),
+            bg='#2196F3',
+            fg='white'
+        ).pack(side='left', expand=True)
+
+        # Next month button
+        tk.Button(
+            header_frame,
+            text='>',
+            font=('Arial', 12, 'bold'),
+            bg='#2196F3',
+            fg='white',
+            bd=0,
+            cursor='hand2',
+            command=self.next_month
+        ).pack(side='right', padx=5, pady=5)
+
+        # Days header
+        days_frame = tk.Frame(self.cal_frame, bg='white')
+        days_frame.pack(fill='x')
+
+        for day in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']:
+            tk.Label(
+                days_frame,
+                text=day,
+                font=('Arial', 10, 'bold'),
+                bg='#E3F2FD',
+                fg='#1976D2',
+                width=4
+            ).pack(side='left', padx=1, pady=1)
+
+        # Calendar grid
+        cal_grid = tk.Frame(self.cal_frame, bg='white')
+        cal_grid.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Get calendar data
+        cal_data = calendar.monthcalendar(self.current_year, self.current_month)
+
+        for week_num, week in enumerate(cal_data):
+            week_frame = tk.Frame(cal_grid, bg='white')
+            week_frame.pack(fill='x')
+
+            for day in week:
+                if day == 0:
+                    # Empty day
+                    tk.Label(
+                        week_frame,
+                        text='',
+                        width=4,
+                        height=2,
+                        bg='white'
+                    ).pack(side='left', padx=1, pady=1)
+                else:
+                    # Regular day
+                    day_btn = tk.Button(
+                        week_frame,
+                        text=str(day),
+                        width=4,
+                        height=1,
+                        font=('Arial', 10),
+                        cursor='hand2',
+                        command=lambda d=day: self.select_date(d)
+                    )
+
+                    # Highlight today
+                    today = datetime.now()
+                    if (day == today.day and self.current_month == today.month
+                            and self.current_year == today.year):
+                        day_btn.config(bg='#FFC107', fg='black', font=('Arial', 10, 'bold'))
+                    else:
+                        day_btn.config(bg='white', fg='black', relief='flat', bd=1)
+                        day_btn.bind('<Enter>', lambda e, btn=day_btn: btn.config(bg='#E3F2FD'))
+                        day_btn.bind('<Leave>', lambda e, btn=day_btn: btn.config(bg='white'))
+
+                    day_btn.pack(side='left', padx=1, pady=1)
+
+    def prev_month(self):
+        if self.current_month == 1:
+            self.current_month = 12
+            self.current_year -= 1
+        else:
+            self.current_month -= 1
+        self.setup_calendar()
+
+    def next_month(self):
+        if self.current_month == 12:
+            self.current_month = 1
+            self.current_year += 1
+        else:
+            self.current_month += 1
+        self.setup_calendar()
+
+    def select_date(self, day):
+        selected_date = datetime(self.current_year, self.current_month, day)
+        date_str = selected_date.strftime('%Y-%m-%d')
+        self.textvariable.set(date_str)
+        if self.callback:
+            self.callback()
+
+    def pack(self, **kwargs):
+        self.cal_frame.pack(**kwargs)
+
+
+class BetterDateEntry:
+    def __init__(self, parent, textvariable, **kwargs):
+        self.textvariable = textvariable
+        self.parent = parent
+        self.callback = kwargs.get('callback', None)
+
+        # Get parent background color safely
+        try:
+            parent_bg = parent.cget('bg')
+        except:
+            parent_bg = 'white'
+
+        self.main_frame = tk.Frame(parent, bg=parent_bg)
+
+        # Date entry field
+        self.date_entry = tk.Entry(
+            self.main_frame,
+            textvariable=textvariable,
+            font=('Segoe UI', 11),
+            width=12,
+            relief='solid',
+            bd=1,
+            bg='white',
+            fg='black'
+        )
+        self.date_entry.pack(side='left', padx=(0, 5))
+
+        # Calendar button
+        self.cal_button = tk.Button(
+            self.main_frame,
+            text='📅',
+            font=('Arial', 12),
+            cursor='hand2',
+            relief='flat',
+            bd=1,
+            bg='#f0f0f0',
+            command=self.show_calendar
+        )
+        self.cal_button.pack(side='left')
+
+        # Popup calendar window
+        self.cal_window = None
+
+        # Bind Enter key to entry
+        self.date_entry.bind('<Return>', self.on_date_entered)
+
+    def on_date_entered(self, event=None):
+        try:
+            date_str = self.textvariable.get()
+            datetime.strptime(date_str, '%Y-%m-%d')  # Validate format
+            if self.callback:
+                self.callback()
+        except ValueError:
+            messagebox.showerror("Invalid Date", "Please enter date in YYYY-MM-DD format")
+
+    def show_calendar(self):
+        if self.cal_window and self.cal_window.winfo_exists():
+            self.cal_window.destroy()
+
+        self.cal_window = tk.Toplevel(self.parent)
+        self.cal_window.title("Select Date")
+        self.cal_window.resizable(False, False)
+
+        # Position near the entry
+        try:
+            x = self.main_frame.winfo_rootx()
+            y = self.main_frame.winfo_rooty() + self.main_frame.winfo_height()
+            self.cal_window.geometry(f"+{x}+{y}")
+        except:
+            # Fallback positioning
+            self.cal_window.geometry("300x250+300+300")
+
+        # Get current date from entry or use today
+        try:
+            current_date = datetime.strptime(self.textvariable.get(), '%Y-%m-%d')
+        except ValueError:
+            current_date = datetime.now()
+
+        # Calendar widget
+        calendar_widget = CustomCalendar(
+            self.cal_window,
+            self.textvariable,
+            callback=self.close_calendar,
+            initial_date=current_date
+        )
+        calendar_widget.pack(padx=5, pady=5)
+
+        # Close button
+        tk.Button(
+            self.cal_window,
+            text="Close",
+            command=self.close_calendar,
+            bg='#f0f0f0',
+            relief='flat',
+            bd=1,
+            cursor='hand2'
+        ).pack(pady=5)
+
+        # Make window modal
+        self.cal_window.transient(self.parent)
+        self.cal_window.grab_set()
+        self.cal_window.focus_set()
+
+    def close_calendar(self):
+        if self.cal_window:
+            self.cal_window.destroy()
+            self.cal_window = None
+        if self.callback:
+            self.callback()
+
+    def pack(self, **kwargs):
+        self.main_frame.pack(**kwargs)
+
+    def grid(self, **kwargs):
+        self.main_frame.grid(**kwargs)
 
 
 class NotificationSystem:
@@ -511,8 +773,10 @@ class NotificationSystem:
 
         canvas.bind("<MouseWheel>", on_mousewheel)
 
+    # Updated create_branches_tab method for your NotificationSystem class
+
     def create_branches_tab(self, parent_frame):
-        """Create the branches monitoring tab"""
+        """Create the branches monitoring tab with improved date picker"""
         # Header with date picker
         header_frame = tk.Frame(parent_frame, bg=COLORS['surface'], relief="flat", bd=1)
         header_frame.pack(fill="x", padx=10, pady=10)
@@ -537,36 +801,16 @@ class NotificationSystem:
             fg=COLORS['text']
         ).pack(side="left", padx=(0, 5))
 
-        # Date picker or entry
+        # Initialize date variable
         self.selected_date = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d"))
 
-        if HAS_DATE_PICKER:
-            self.date_picker = DateEntry(
-                date_frame,
-                textvariable=self.selected_date,
-                font=("Segoe UI", self.get_font_size(10)),
-                width=12,
-                date_pattern='yyyy-mm-dd',
-                background=COLORS['secondary'],
-                foreground='white',
-                borderwidth=1,
-                relief="solid"
-            )
-            self.date_picker.pack(side="left", padx=(0, 10))
-            self.date_picker.bind("<<DateEntrySelected>>", lambda e: self.load_branches_data())
-        else:
-            date_entry = tk.Entry(
-                date_frame,
-                textvariable=self.selected_date,
-                font=("Segoe UI", self.get_font_size(10)),
-                width=12,
-                bg=COLORS['surface'],
-                fg=COLORS['text'],
-                bd=1,
-                relief="solid"
-            )
-            date_entry.pack(side="left", padx=(0, 10))
-            date_entry.bind("<Return>", lambda e: self.load_branches_data())
+        # Use BetterDateEntry instead of DateEntry
+        self.date_picker = BetterDateEntry(
+            date_frame,
+            textvariable=self.selected_date,
+            callback=self.load_branches_data
+        )
+        self.date_picker.pack(side="left", padx=(0, 10))
 
         # Check button
         check_btn = tk.Button(
@@ -590,6 +834,10 @@ class NotificationSystem:
 
         # Initial load
         self.load_branches_data()
+
+    # Also add the BetterDateEntry class to your file at the top, after imports:
+
+
 
     def load_branches_data(self):
         """Load branches data for selected date"""

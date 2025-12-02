@@ -9,8 +9,6 @@ from PIL import Image, ImageTk  # For viewing image
 
 
 def open_dashboard(user_data):
-
-
     branch = user_data["branch"]
     corporation = user_data.get("corporations", "Unknown Corporation")
 
@@ -43,15 +41,19 @@ def open_dashboard(user_data):
             confirmed_transaction = transaction_var.get()
             confirmed_date = date_var.get()
             uploaded = 0
-
             confirm_win.destroy()
+
+            # ✅ NEW: Get Palawan reference number if applicable
+            palawan_ref = ""
+            if hasattr(palawan_field_frame, 'palawan_entry'):
+                palawan_ref = palawan_field_frame.palawan_entry.get().strip()
 
             # Show progress bar and initialize
             progress_bar.pack(pady=(0, 10))
             progress_bar['maximum'] = len(valid_files)
             progress_bar['value'] = 0
             progress_label.config(text=f"Uploading 0/{len(valid_files)} images...")
-            dash.update_idletasks()
+            canvas.update_idletasks()
 
             uploaded_by = name_var.get().strip()
             if not uploaded_by:
@@ -74,18 +76,13 @@ def open_dashboard(user_data):
                         print(f"🔄 Trying Admin SDK upload for {filename}")
                         url = upload_file_with_admin_sdk(file_path, storage_path)
                         print(f"✅ Admin SDK upload successful for {filename}")
-
                     except Exception as admin_error:
                         print(f"⚠️ Admin SDK upload failed: {admin_error}")
                         print(f"🔄 Falling back to Pyrebase upload for {filename}")
-
                         # Fallback to Pyrebase method
                         upload_result = storage.child(storage_path).put(file_path)
                         print(f"✅ Pyrebase upload completed for {filename}")
-
-
                         fix_content_type_after_pyrebase_upload(storage_path, filename)
-
                         print(f"🔄 Generating download URL for {filename}")
                         url = get_download_url_with_fallback(storage_path)
 
@@ -95,6 +92,7 @@ def open_dashboard(user_data):
                     else:
                         print(f"⚠️ Upload successful but URL may not be accessible: {filename}")
 
+                    # ✅ UPDATED: Add palawan_reference to doc_data
                     doc_data = {
                         "branch": branch,
                         "transaction_type": confirmed_transaction,
@@ -103,15 +101,18 @@ def open_dashboard(user_data):
                         "image_url": url,
                         "storage_path": storage_path,
                         "filename": filename,
-                        "timestamp": datetime.datetime.now(),  # ✅ FIXED: Using user's current local time
+                        "timestamp": datetime.datetime.now(),
                         "corporations": corporation,
                     }
 
-                    db.collection("Uploaded_Images").add(doc_data)
+                    # Only add palawan_reference if it's not empty
+                    if palawan_ref:
+                        doc_data["palawan_reference"] = palawan_ref
 
+                    db.collection("Uploaded_Images").add(doc_data)
                     uploaded += 1
                     progress_label.config(text=f"Uploading {uploaded}/{len(valid_files)} images...")
-                    dash.update_idletasks()
+                    canvas.update_idletasks()
                     print(f"✅ Database record created for {filename}")
                     print(f"✅ Final working URL: {url}")
 
@@ -125,15 +126,24 @@ def open_dashboard(user_data):
         def view_image(path):
             img_win = tk.Toplevel(confirm_win)
             img_win.title("Image Preview")
-            img_win.geometry("750x650")
+            
+            # Responsive image preview sizing
+            preview_width = max(600, min(int(dash.winfo_width() * 0.6), 900))
+            preview_height = max(500, min(int(dash.winfo_height() * 0.7), 750))
+            
+            # Center preview window
+            x_offset = dash.winfo_rootx() + (dash.winfo_width() - preview_width) // 2
+            y_offset = dash.winfo_rooty() + (dash.winfo_height() - preview_height) // 2
+            
+            img_win.geometry(f"{preview_width}x{preview_height}+{x_offset}+{y_offset}")
             img_win.configure(bg="#f8f9fa")
             img_win.grab_set()
+            img_win.minsize(400, 350)
 
             # Header
             header_frame = tk.Frame(img_win, bg="#1e293b", height=50)
             header_frame.pack(fill="x")
             header_frame.pack_propagate(False)
-
             tk.Label(header_frame, text="Image Preview", font=("Segoe UI", 14, "bold"),
                      bg="#1e293b", fg="white").pack(side="left", padx=20, pady=10)
 
@@ -143,9 +153,11 @@ def open_dashboard(user_data):
 
             try:
                 img = Image.open(path)
-                img.thumbnail((700, 450))
+                # Scale image based on available container size
+                max_img_width = preview_width - 100
+                max_img_height = preview_height - 200
+                img.thumbnail((max_img_width, max_img_height))
                 img_tk = ImageTk.PhotoImage(img)
-
                 label = tk.Label(img_container, image=img_tk, bg="white")
                 label.image = img_tk
                 label.pack(expand=True, pady=20)
@@ -156,7 +168,6 @@ def open_dashboard(user_data):
             # Close button
             btn_frame = tk.Frame(img_win, bg="#f8f9fa")
             btn_frame.pack(fill="x", padx=20, pady=(0, 20))
-
             close_btn = tk.Button(btn_frame, text="Close", font=("Segoe UI", 10, "bold"),
                                   bg="#6b7280", fg="white", activebackground="#4b5563",
                                   relief="flat", padx=30, pady=8, cursor="hand2",
@@ -165,16 +176,24 @@ def open_dashboard(user_data):
 
         confirm_win = tk.Toplevel(dash)
         confirm_win.title("Upload Confirmation")
-        confirm_win.geometry("700x600")
+        
+        # Responsive popup sizing
+        popup_width = max(600, min(int(dash.winfo_width() * 0.7), 800))
+        popup_height = max(500, min(int(dash.winfo_height() * 0.75), 700))
+        
+        # Center popup relative to main window
+        x_offset = dash.winfo_rootx() + (dash.winfo_width() - popup_width) // 2
+        y_offset = dash.winfo_rooty() + (dash.winfo_height() - popup_height) // 2
+        
+        confirm_win.geometry(f"{popup_width}x{popup_height}+{x_offset}+{y_offset}")
         confirm_win.configure(bg="#f8f9fa")
         confirm_win.grab_set()
-        confirm_win.geometry(f"+{dash.winfo_rootx() + 50}+{dash.winfo_rooty() + 50}")
+        confirm_win.minsize(500, 400)
 
         # Header
         header_frame = tk.Frame(confirm_win, bg="#1e293b", height=60)
         header_frame.pack(fill="x")
         header_frame.pack_propagate(False)
-
         tk.Label(header_frame, text="Upload Confirmation", font=("Segoe UI", 16, "bold"),
                  bg="#1e293b", fg="white").pack(side="left", padx=30, pady=15)
 
@@ -284,6 +303,7 @@ def open_dashboard(user_data):
 
             cv2.imshow("Capture Image - Press SPACE to Save", frame)
             key = cv2.waitKey(1)
+
             if key % 256 == 27:
                 break
             elif key % 256 == 32:
@@ -291,7 +311,6 @@ def open_dashboard(user_data):
                 default_name = f"captured_{timestamp}.jpg"
                 temp_path = os.path.join(os.path.expanduser("~"), "Documents", default_name)
                 cv2.imwrite(temp_path, frame)
-
                 cap.release()
                 cv2.destroyAllWindows()
 
@@ -300,10 +319,12 @@ def open_dashboard(user_data):
                     if not custom_name:
                         messagebox.showerror("Filename Error", "Filename cannot be empty.")
                         return
+
                     if not custom_name.lower().endswith(".jpg"):
                         custom_name += ".jpg"
 
                     new_temp_path = os.path.join(os.getcwd(), custom_name)
+
                     try:
                         os.rename(temp_path, new_temp_path)
                     except Exception as e:
@@ -315,16 +336,23 @@ def open_dashboard(user_data):
 
                 prompt = tk.Toplevel(dash)
                 prompt.title("Edit Filename")
-                prompt.geometry("400x200")
+                
+                # Responsive filename prompt
+                prompt_width = max(350, min(int(dash.winfo_width() * 0.4), 500))
+                prompt_height = 200
+                
+                x_offset = dash.winfo_rootx() + (dash.winfo_width() - prompt_width) // 2
+                y_offset = dash.winfo_rooty() + (dash.winfo_height() - prompt_height) // 2
+                
+                prompt.geometry(f"{prompt_width}x{prompt_height}+{x_offset}+{y_offset}")
                 prompt.configure(bg="#f8f9fa")
                 prompt.grab_set()
-                prompt.geometry(f"+{dash.winfo_rootx() + 150}+{dash.winfo_rooty() + 150}")
+                prompt.minsize(300, 180)
 
                 # Header
                 header_frame = tk.Frame(prompt, bg="#1e293b", height=50)
                 header_frame.pack(fill="x")
                 header_frame.pack_propagate(False)
-
                 tk.Label(header_frame, text="Edit Filename", font=("Segoe UI", 12, "bold"),
                          bg="#1e293b", fg="white").pack(side="left", padx=20, pady=12)
 
@@ -352,11 +380,17 @@ def open_dashboard(user_data):
         cap.release()
         cv2.destroyAllWindows()
 
+    
     def upload_camera_image(temp_path):
         confirmed_transaction = transaction_var.get()
         confirmed_date = date_var.get()
-        uploaded_by = name_var.get().strip()
 
+        # ✅ NEW: Get Palawan reference number if applicable
+        palawan_ref = ""
+        if hasattr(palawan_field_frame, 'palawan_entry'):
+            palawan_ref = palawan_field_frame.palawan_entry.get().strip()
+
+        uploaded_by = name_var.get().strip()
         if not uploaded_by:
             messagebox.showerror("Missing Name", "Please enter your name before uploading.")
             os.remove(temp_path)
@@ -376,18 +410,14 @@ def open_dashboard(user_data):
                 print(f"🔄 Trying Admin SDK upload for camera image {filename}")
                 url = upload_file_with_admin_sdk(temp_path, storage_path)
                 print(f"✅ Admin SDK camera upload successful")
-
             except Exception as admin_error:
                 print(f"⚠️ Admin SDK camera upload failed: {admin_error}")
                 print(f"🔄 Falling back to Pyrebase upload for camera image {filename}")
-
                 # Fallback to Pyrebase method
                 upload_result = storage.child(storage_path).put(temp_path)
                 print(f"✅ Pyrebase camera upload completed for {filename}")
-
                 # Fix content type after Pyrebase upload
                 fix_content_type_after_pyrebase_upload(storage_path, filename)
-
                 print(f"🔄 Generating download URL for camera image {filename}")
                 url = get_download_url_with_fallback(storage_path)
 
@@ -397,6 +427,7 @@ def open_dashboard(user_data):
             else:
                 print(f"⚠️ Camera upload successful but URL may not be accessible")
 
+            # ✅ UPDATED: Add palawan_reference to doc_data
             doc_data = {
                 "branch": branch,
                 "transaction_type": confirmed_transaction,
@@ -404,13 +435,16 @@ def open_dashboard(user_data):
                 "uploaded_by": uploaded_by,
                 "image_url": url,
                 "filename": filename,
-                "timestamp": datetime.datetime.now(),  # ✅ FIXED: Using user's current local time
+                "timestamp": datetime.datetime.now(),
                 "storage_path": storage_path,
                 "corporations": corporation,
             }
 
-            db.collection("Uploaded_Images").add(doc_data)
+            # Only add palawan_reference if it's not empty
+            if palawan_ref:
+                doc_data["palawan_reference"] = palawan_ref
 
+            db.collection("Uploaded_Images").add(doc_data)
             progress_label.config(text="Camera image uploaded successfully!")
             messagebox.showinfo("Success", "Captured image uploaded successfully.")
             print(f"✅ Camera image database record created")
@@ -423,16 +457,22 @@ def open_dashboard(user_data):
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
-    VERSION = "v1.1.0"
+    VERSION = "v1.1.3"
 
-    # Main window
     dash = tk.Tk()
-    dash.title(f"Record Management System - {branch} ({VERSION})")
-    dash.geometry("700x900")
+    dash.title(f"Record Management System - {branch} ({VERSION})") 
+    screen_width = dash.winfo_screenwidth() 
+    screen_height = dash.winfo_screenheight() 
+    window_width = max(900, min(int(screen_width * 0.8), 1400))
+    window_height = max(700, min(int(screen_height * 0.85), 900)) 
+    x_position = (screen_width - window_width) // 2
+    y_position = (screen_height - window_height) // 2
+    dash.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
     dash.configure(bg="#f8f9fa")
-    dash.resizable(False, False)
+    dash.resizable(True, True)
+    dash.minsize(800, 600)  # Set minimum window size
 
-    # Configure global styles
+    
     style = ttk.Style()
     style.theme_use("clam")
     style.configure("TCombobox",
@@ -464,18 +504,53 @@ def open_dashboard(user_data):
     tk.Label(header_right, text=f"Corporation: {corporation}",
              font=("Segoe UI", 10), bg="#1e293b", fg="#94a3b8").pack(anchor="e")
 
-    # Main content area
-    main_content = tk.Frame(dash, bg="#f8f9fa")
-    main_content.pack(expand=True, fill="both", padx=30, pady=30)
+    # ✅ SCROLLABLE MAIN CONTENT AREA
+    main_container = tk.Frame(dash, bg="#f8f9fa")
+    main_container.pack(expand=True, fill="both", padx=0, pady=0)
 
-    # Upload form card
-    form_card = tk.Frame(main_content, bg="white", relief="solid", bd=1)
-    form_card.pack(fill="both", expand=True)
+    # Create canvas with scrollbar
+    canvas = tk.Canvas(main_container, bg="#f8f9fa", highlightthickness=0, relief="flat")
+    canvas.pack(side="left", fill="both", expand=True)
+
+    scrollbar = ttk.Scrollbar(main_container, orient="vertical", command=canvas.yview)
+    scrollbar.pack(side="right", fill="y")
+
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+ 
+    scrollable_frame = tk.Frame(canvas, bg="#f8f9fa")
+    canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    def on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    def on_linux_scroll(event):                              
+        if event.num == 5:
+            canvas.yview_scroll(3, "units")
+        elif event.num == 4:
+            canvas.yview_scroll(-3, "units")
+
+    canvas.bind_all("<MouseWheel>", on_mousewheel)
+    canvas.bind_all("<Button-4>", on_linux_scroll)
+    canvas.bind_all("<Button-5>", on_linux_scroll)
+
+  
+    def on_frame_configure(event=None):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        canvas_width = canvas.winfo_width()
+        if canvas_width > 1:
+            canvas.itemconfig(canvas_window, width=canvas_width)
+
+    scrollable_frame.bind("<Configure>", on_frame_configure)
+    canvas.bind("<Configure>", on_frame_configure)
+
+    # Upload form card (inside scrollable frame)
+    form_card = tk.Frame(scrollable_frame, bg="white", relief="solid", bd=1)
+    form_card.pack(fill="both", expand=True, padx=30, pady=30)
 
     # Form header
     form_header = tk.Frame(form_card, bg="#f1f5f9")
     form_header.pack(fill="x")
-
     tk.Label(form_header, text="Upload Documents", font=("Segoe UI", 16, "bold"),
              bg="#f1f5f9", fg="#1f2937").pack(side="left", padx=30, pady=15)
 
@@ -496,21 +571,48 @@ def open_dashboard(user_data):
     tk.Label(transaction_frame, text="Select the type of transaction for these documents",
              font=("Segoe UI", 9), bg="white", fg="#6b7280").pack(anchor="w", pady=(2, 8))
 
-    transaction_types = ["Palawan Payout", "Palawan Sendout", "Money Changer Buy", "Money Changer Sell",
+    transaction_types = ["Money Changer Buy", "Palawan Sendout","Palawan Payout",  "Money Changer Sell",
                          "Cars & Motors", "Auction Sales", "KYC Individual Records", "KYC Corporate Records",
                          "RIA In", "RIA Out",
                          "Gcash In", "Gcash Out", "i2i In", "i2i Out", "Palawan Pay In", "Palawan Pay Out",
                          "Jewelry New", "Jewelry Renew", "Jewelry Redeem", "Storage New", "Storage Renew",
                          "Storage Redeem", "Cars & Motors New", "Cars & Motors Renew", "Cars & Motors Redeem"
                          ]
+
     transaction_var = tk.StringVar(value=transaction_types[0])
     transaction_dropdown = ttk.Combobox(transaction_frame, textvariable=transaction_var,
                                         values=transaction_types, state="readonly",
                                         font=("Segoe UI", 11), height=10)
     transaction_dropdown.current(0)
     transaction_dropdown.pack(fill="x")
+    
+    palawan_field_frame = tk.Frame(fields_frame, bg="white")
+    palawan_field_frame.pack(fill="x", pady=(0, 20))
 
-    # Date field
+    def on_transaction_change(*args):
+        # Clear previous widgets in palawan frame
+        for widget in palawan_field_frame.winfo_children():
+            widget.destroy()
+
+        selected_transaction = transaction_var.get()
+        
+        # Show field only if Palawan Payout or Palawan Sendout is selected
+        if selected_transaction in ["Palawan Payout", "Palawan Sendout"]:
+            tk.Label(palawan_field_frame, text="Lotes", font=("Segoe UI", 12, "bold"),
+                     bg="white", fg="#374151").pack(anchor="w")
+           
+
+            palawan_entry = tk.Entry(palawan_field_frame, font=("Segoe UI", 11),
+                                     relief="solid", bd=1)
+            palawan_entry.pack(fill="x", ipady=8)
+
+            # Store reference to entry for later use
+            palawan_field_frame.palawan_entry = palawan_entry
+
+    # Bind the transaction dropdown to trigger the function
+    transaction_var.trace("w", on_transaction_change)
+
+    # Date field - COMPLETE REWRITE: Custom solution to avoid DateEntry issues
     date_frame = tk.Frame(fields_frame, bg="white")
     date_frame.pack(fill="x", pady=(0, 20))
 
@@ -519,14 +621,128 @@ def open_dashboard(user_data):
     tk.Label(date_frame, text="Date when the transaction occurred",
              font=("Segoe UI", 9), bg="white", fg="#6b7280").pack(anchor="w", pady=(2, 8))
 
+    # Create container for date input and button
+    date_input_frame = tk.Frame(date_frame, bg="white")
+    date_input_frame.pack(fill="x")
+
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     date_var = tk.StringVar(value=today_str)
-    date_picker = DateEntry(date_frame, textvariable=date_var, date_pattern="yyyy-mm-dd",
-                            font=("Segoe UI", 11), state="readonly",
-                            background="#10b981", foreground="white",
-                            borderwidth=1, relief="solid")
-    date_picker.set_date(datetime.date.today())
-    date_picker.pack(fill="x")
+
+    # ✅ BULLETPROOF SOLUTION: Custom date entry with separate calendar popup
+    date_entry = tk.Entry(date_input_frame,
+                          textvariable=date_var,
+                          font=("Segoe UI", 11),
+                          state="readonly",
+                          relief="solid",
+                          bd=1,
+                          bg="#f9fafb",
+                          fg="#374151",
+                          cursor="hand2")
+    date_entry.pack(side="left", fill="x", expand=True, ipady=8)
+
+    # Calendar button
+    calendar_btn = tk.Button(date_input_frame,
+                             text="📅",
+                             font=("Segoe UI", 12),
+                             bg="#10b981",
+                             fg="white",
+                             relief="flat",
+                             bd=1,
+                             padx=8,
+                             pady=8,
+                             cursor="hand2",
+                             activebackground="#059669")
+    calendar_btn.pack(side="right", padx=(5, 0))
+
+    def open_calendar_popup():
+        """Open a reliable calendar popup window"""
+        # Create popup window
+        cal_popup = tk.Toplevel(dash)
+        cal_popup.title("Select Date")
+        cal_popup.geometry("300x300")
+        cal_popup.configure(bg="#f8f9fa")
+        cal_popup.resizable(False, False)
+        cal_popup.grab_set()  # Make it modal
+
+        # Center the popup
+        cal_popup.geometry(f"+{dash.winfo_rootx() + 200}+{dash.winfo_rooty() + 200}")
+
+        # Header
+        header_frame = tk.Frame(cal_popup, bg="#1e293b", height=40)
+        header_frame.pack(fill="x")
+        header_frame.pack_propagate(False)
+        tk.Label(header_frame, text="Select Transaction Date",
+                 font=("Segoe UI", 12, "bold"),
+                 bg="#1e293b", fg="white").pack(pady=10)
+
+        # Calendar widget (this time without readonly issues)
+        from tkcalendar import Calendar
+
+        # Parse current date
+        try:
+            current_date = datetime.datetime.strptime(date_var.get(), "%Y-%m-%d").date()
+        except:
+            current_date = datetime.date.today()
+
+        cal = Calendar(cal_popup,
+                       selectmode='day',
+                       date_pattern='yyyy-mm-dd',
+                       font=("Segoe UI", 10),
+                       selectbackground="#10b981",
+                       selectforeground="white",
+                       normalbackground="white",
+                       normalforeground="black",
+                       weekendbackground="#f1f5f9",
+                       weekendforeground="black",
+                       othermonthforeground="#6b7280",
+                       othermonthbackground="white",
+                       bordercolor="#e5e7eb",
+                       headersbackground="#10b981",
+                       headersforeground="white",
+                       showweeknumbers=False)
+
+        cal.selection_set(current_date)
+        cal.pack(expand=True, fill="both", padx=20, pady=20)
+
+        # Buttons frame
+        btn_frame = tk.Frame(cal_popup, bg="#f8f9fa")
+        btn_frame.pack(fill="x", padx=20, pady=(0, 20))
+
+        def select_date():
+            selected_date = cal.selection_get()
+            date_var.set(selected_date.strftime("%Y-%m-%d"))
+            cal_popup.destroy()
+
+        def cancel_selection():
+            cal_popup.destroy()
+
+        # Cancel button
+        cancel_btn = tk.Button(btn_frame, text="Cancel",
+                               font=("Segoe UI", 10, "bold"),
+                               bg="#6b7280", fg="white",
+                               relief="flat", padx=20, pady=8,
+                               cursor="hand2",
+                               command=cancel_selection)
+        cancel_btn.pack(side="left")
+
+        # Select button
+        select_btn = tk.Button(btn_frame, text="Select Date",
+                               font=("Segoe UI", 10, "bold"),
+                               bg="#10b981", fg="white",
+                               relief="flat", padx=20, pady=8,
+                               cursor="hand2",
+                               command=select_date)
+        select_btn.pack(side="right")
+
+        # Double-click to select
+        cal.bind("<<CalendarSelected>>", lambda e: select_date())
+
+    # Bind calendar opening to both entry and button
+    calendar_btn.configure(command=open_calendar_popup)
+    date_entry.bind('<Button-1>', lambda e: open_calendar_popup())
+    date_entry.bind('<Double-Button-1>', lambda e: open_calendar_popup())
+    date_entry.bind('<Return>', lambda e: open_calendar_popup())
+    date_entry.bind('<space>', lambda e: open_calendar_popup())
 
     # Name field
     name_frame = tk.Frame(fields_frame, bg="white")
@@ -568,7 +784,6 @@ def open_dashboard(user_data):
                            activebackground="#2563eb", relief="flat", cursor="hand2",
                            padx=30, pady=12, command=capture_and_upload)
     camera_btn.pack(fill="x", pady=(0, 10))
-
 
     # Footer
     footer = tk.Frame(dash, bg="#f8f9fa", height=40)
