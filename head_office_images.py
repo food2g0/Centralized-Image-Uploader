@@ -274,35 +274,45 @@ def open_head_office_images(admin):
         ).pack(pady=8 if is_small_screen else 10)
 
     def view_pdf(pdf_data):
-        """Open PDF in browser or default PDF viewer"""
+        """Open PDF or Image based on file type"""
         try:
-            pdf_url = pdf_data.get("file_url", "")
-            if not pdf_url:
-                messagebox.showerror("Error", "PDF URL not found")
+            file_url = pdf_data.get("file_url", "")
+            filename = pdf_data.get("file_name", "")
+            
+            if not file_url:
+                messagebox.showerror("Error", "File URL not found")
                 return
 
-            # Try to download and open PDF
-            response = requests.get(pdf_url, timeout=30)
-            if response.status_code == 200:
-                # Create temporary file
-                temp_dir = tempfile.mkdtemp()
-                filename = pdf_data.get("filename", "document.pdf")
-                if not filename.endswith('.pdf'):
-                    filename += '.pdf'
-
-                temp_path = os.path.join(temp_dir, filename)
-
-                with open(temp_path, 'wb') as f:
-                    f.write(response.content)
-
-                # Open with default PDF viewer
-                webbrowser.open(f'file://{temp_path}')
+            # ✅ FIX: Detect file type from filename or URL
+            file_extension = os.path.splitext(filename)[1].lower()
+            image_extensions = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.jfif')
+            
+            # Download the file
+            response = requests.get(file_url, timeout=30)
+            if response.status_code != 200:
+                messagebox.showerror("Error", f"Failed to download file: {response.status_code}")
+                return
+            
+            # Create temporary file
+            temp_dir = tempfile.mkdtemp()
+            temp_path = os.path.join(temp_dir, filename)
+            
+            with open(temp_path, 'wb') as f:
+                f.write(response.content)
+            
+            # ✅ NEW: Handle images differently from PDFs
+            if file_extension in image_extensions:
+                # Open image with default image viewer
+                if os.name == 'nt':  # Windows
+                    os.startfile(temp_path)
+                elif os.name == 'posix':  # Mac/Linux
+                    os.system(f'open "{temp_path}"')
             else:
-                messagebox.showerror("Error", f"Failed to download PDF: {response.status_code}")
+                # Open PDF or other files in browser/default viewer
+                webbrowser.open(f'file:///{temp_path}')
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open PDF: {str(e)}")
-
+            messagebox.showerror("Error", f"Failed to open file: {str(e)}")
     def load_documents_for_department(selected_dept):
         # Track current department for refresh functionality
         current_department[0] = selected_dept

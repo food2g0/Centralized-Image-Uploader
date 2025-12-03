@@ -43,10 +43,13 @@ def open_dashboard(user_data):
             uploaded = 0
             confirm_win.destroy()
 
-            # ✅ NEW: Get Palawan reference number if applicable
+            # ✅ FIXED: Safely get Palawan reference number
             palawan_ref = ""
-            if hasattr(palawan_field_frame, 'palawan_entry'):
-                palawan_ref = palawan_field_frame.palawan_entry.get().strip()
+            try:
+                if hasattr(palawan_field_frame, 'palawan_entry') and palawan_field_frame.palawan_entry.winfo_exists():
+                    palawan_ref = palawan_field_frame.palawan_entry.get().strip()
+            except:
+                palawan_ref = ""
 
             # Show progress bar and initialize
             progress_bar.pack(pady=(0, 10))
@@ -92,7 +95,7 @@ def open_dashboard(user_data):
                     else:
                         print(f"⚠️ Upload successful but URL may not be accessible: {filename}")
 
-                    # ✅ UPDATED: Add palawan_reference to doc_data
+                    # ✅ Build doc_data - works for ALL transaction types
                     doc_data = {
                         "branch": branch,
                         "transaction_type": confirmed_transaction,
@@ -105,7 +108,7 @@ def open_dashboard(user_data):
                         "corporations": corporation,
                     }
 
-                    # Only add palawan_reference if it's not empty
+                    # Only add palawan_reference if it's not empty (for any transaction type)
                     if palawan_ref:
                         doc_data["palawan_reference"] = palawan_ref
 
@@ -385,10 +388,13 @@ def open_dashboard(user_data):
         confirmed_transaction = transaction_var.get()
         confirmed_date = date_var.get()
 
-        # ✅ NEW: Get Palawan reference number if applicable
+        # ✅ FIXED: Safely get Palawan reference number
         palawan_ref = ""
-        if hasattr(palawan_field_frame, 'palawan_entry'):
-            palawan_ref = palawan_field_frame.palawan_entry.get().strip()
+        try:
+            if hasattr(palawan_field_frame, 'palawan_entry') and palawan_field_frame.palawan_entry.winfo_exists():
+                palawan_ref = palawan_field_frame.palawan_entry.get().strip()
+        except:
+            palawan_ref = ""
 
         uploaded_by = name_var.get().strip()
         if not uploaded_by:
@@ -427,7 +433,7 @@ def open_dashboard(user_data):
             else:
                 print(f"⚠️ Camera upload successful but URL may not be accessible")
 
-            # ✅ UPDATED: Add palawan_reference to doc_data
+            # ✅ Build doc_data - works for ALL transaction types
             doc_data = {
                 "branch": branch,
                 "transaction_type": confirmed_transaction,
@@ -440,7 +446,7 @@ def open_dashboard(user_data):
                 "corporations": corporation,
             }
 
-            # Only add palawan_reference if it's not empty
+         
             if palawan_ref:
                 doc_data["palawan_reference"] = palawan_ref
 
@@ -456,7 +462,9 @@ def open_dashboard(user_data):
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-
+                
+                
+                
     VERSION = "v1.1.3"
 
     dash = tk.Tk()
@@ -470,7 +478,7 @@ def open_dashboard(user_data):
     dash.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
     dash.configure(bg="#f8f9fa")
     dash.resizable(True, True)
-    dash.minsize(800, 600)  # Set minimum window size
+    dash.minsize(800, 600)
 
     
     style = ttk.Style()

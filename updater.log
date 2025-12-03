@@ -5376,3 +5376,916 @@
 2025-12-02 17:56:36,159 - INFO - LAUNCHING MAIN APPLICATION
 2025-12-02 17:56:36,159 - INFO - ========================================
 2025-12-02 17:56:36,980 - INFO - Calling login_gui.main()
+2025-12-03 08:41:29,782 - INFO - Configuration loaded from updater.ini
+2025-12-03 08:41:29,782 - INFO - Version from config: 1.1.2
+2025-12-03 08:41:29,783 - INFO - Single instance lock acquired
+2025-12-03 08:41:29,783 - INFO - ==================================================
+2025-12-03 08:41:29,783 - INFO - VERSION STATUS DEBUG
+2025-12-03 08:41:29,783 - INFO - ==================================================
+2025-12-03 08:41:29,784 - INFO - version.txt contains: '1.1.3'
+2025-12-03 08:41:29,784 - INFO - CONFIG current_version: '1.1.2'
+2025-12-03 08:41:29,784 - INFO - updater.ini contains version: '1.1.2'
+2025-12-03 08:41:29,784 - INFO - No pending updates
+2025-12-03 08:41:29,784 - INFO - ==================================================
+2025-12-03 08:41:29,785 - INFO - Initializing application files...
+2025-12-03 08:41:29,785 - INFO - Version mismatch detected: file=1.1.3, config=1.1.2
+2025-12-03 08:41:29,785 - INFO - Updated config version to: 1.1.3
+2025-12-03 08:41:29,786 - INFO - Version synchronized to: 1.1.3
+2025-12-03 08:41:29,786 - INFO - Application files initialized successfully
+2025-12-03 08:41:29,786 - INFO - ============================================================
+2025-12-03 08:41:29,786 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 08:41:29,786 - INFO - ============================================================
+2025-12-03 08:41:29,786 - INFO - Checking for updates using latest release...
+2025-12-03 08:41:29,786 - INFO - Fetching latest release information from GitHub...
+2025-12-03 08:41:29,787 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 08:41:29,787 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 08:41:30,284 - INFO - Request successful (Status: 200)
+2025-12-03 08:41:30,284 - INFO - Latest release: 1.1.3
+2025-12-03 08:41:30,285 - INFO - Release name: Update V 1.1.3
+2025-12-03 08:41:30,286 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 08:41:30,286 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 08:41:30,287 - INFO - Current version: 1.1.3
+2025-12-03 08:41:30,287 - INFO - Latest version: 1.1.3
+2025-12-03 08:41:30,288 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 08:41:30,288 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 08:41:30,289 - INFO - App is up to date
+2025-12-03 08:41:30,289 - INFO - No updates needed
+2025-12-03 08:41:30,289 - INFO - ========================================
+2025-12-03 08:41:30,290 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 08:41:30,290 - INFO - ========================================
+2025-12-03 08:41:32,940 - INFO - Calling login_gui.main()
+2025-12-03 11:04:37,294 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:04:37,295 - INFO - Version from config: 1.1.3
+2025-12-03 11:04:37,295 - INFO - Single instance lock acquired
+2025-12-03 11:04:37,295 - INFO - ==================================================
+2025-12-03 11:04:37,295 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:04:37,296 - INFO - ==================================================
+2025-12-03 11:04:37,296 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:04:37,296 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:04:37,296 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:04:37,296 - INFO - No pending updates
+2025-12-03 11:04:37,297 - INFO - ==================================================
+2025-12-03 11:04:37,297 - INFO - Initializing application files...
+2025-12-03 11:04:37,297 - INFO - Application files initialized successfully
+2025-12-03 11:04:37,297 - INFO - ============================================================
+2025-12-03 11:04:37,297 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:04:37,297 - INFO - ============================================================
+2025-12-03 11:04:37,298 - INFO - Checking for updates using latest release...
+2025-12-03 11:04:37,298 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:04:37,298 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:04:37,298 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:04:37,804 - INFO - Request successful (Status: 200)
+2025-12-03 11:04:37,805 - INFO - Latest release: 1.1.3
+2025-12-03 11:04:37,805 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:04:37,805 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:04:37,805 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:04:37,805 - INFO - Current version: 1.1.3
+2025-12-03 11:04:37,805 - INFO - Latest version: 1.1.3
+2025-12-03 11:04:37,805 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:04:37,806 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:04:37,806 - INFO - App is up to date
+2025-12-03 11:04:37,806 - INFO - No updates needed
+2025-12-03 11:04:37,806 - INFO - ========================================
+2025-12-03 11:04:37,806 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:04:37,806 - INFO - ========================================
+2025-12-03 11:04:39,215 - INFO - Calling login_gui.main()
+2025-12-03 11:13:28,404 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:13:28,405 - INFO - Version from config: 1.1.3
+2025-12-03 11:13:28,405 - INFO - Single instance lock acquired
+2025-12-03 11:13:28,405 - INFO - ==================================================
+2025-12-03 11:13:28,405 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:13:28,405 - INFO - ==================================================
+2025-12-03 11:13:28,406 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:13:28,406 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:13:28,406 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:13:28,406 - INFO - No pending updates
+2025-12-03 11:13:28,406 - INFO - ==================================================
+2025-12-03 11:13:28,406 - INFO - Initializing application files...
+2025-12-03 11:13:28,407 - INFO - Application files initialized successfully
+2025-12-03 11:13:28,407 - INFO - ============================================================
+2025-12-03 11:13:28,407 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:13:28,407 - INFO - ============================================================
+2025-12-03 11:13:28,407 - INFO - Checking for updates using latest release...
+2025-12-03 11:13:28,407 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:13:28,407 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:13:28,408 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:13:28,834 - INFO - Request successful (Status: 200)
+2025-12-03 11:13:28,834 - INFO - Latest release: 1.1.3
+2025-12-03 11:13:28,834 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:13:28,834 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:13:28,835 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:13:28,835 - INFO - Current version: 1.1.3
+2025-12-03 11:13:28,835 - INFO - Latest version: 1.1.3
+2025-12-03 11:13:28,835 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:13:28,835 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:13:28,835 - INFO - App is up to date
+2025-12-03 11:13:28,835 - INFO - No updates needed
+2025-12-03 11:13:28,836 - INFO - ========================================
+2025-12-03 11:13:28,836 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:13:28,836 - INFO - ========================================
+2025-12-03 11:13:29,376 - INFO - Calling login_gui.main()
+2025-12-03 11:16:47,111 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:16:47,111 - INFO - Version from config: 1.1.3
+2025-12-03 11:16:47,112 - INFO - Single instance lock acquired
+2025-12-03 11:16:47,112 - INFO - ==================================================
+2025-12-03 11:16:47,112 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:16:47,112 - INFO - ==================================================
+2025-12-03 11:16:47,112 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:16:47,113 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:16:47,113 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:16:47,113 - INFO - No pending updates
+2025-12-03 11:16:47,113 - INFO - ==================================================
+2025-12-03 11:16:47,113 - INFO - Initializing application files...
+2025-12-03 11:16:47,114 - INFO - Application files initialized successfully
+2025-12-03 11:16:47,114 - INFO - ============================================================
+2025-12-03 11:16:47,114 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:16:47,114 - INFO - ============================================================
+2025-12-03 11:16:47,114 - INFO - Checking for updates using latest release...
+2025-12-03 11:16:47,114 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:16:47,114 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:16:47,114 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:16:47,586 - INFO - Request successful (Status: 200)
+2025-12-03 11:16:47,587 - INFO - Latest release: 1.1.3
+2025-12-03 11:16:47,587 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:16:47,587 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:16:47,587 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:16:47,587 - INFO - Current version: 1.1.3
+2025-12-03 11:16:47,587 - INFO - Latest version: 1.1.3
+2025-12-03 11:16:47,587 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:16:47,588 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:16:47,588 - INFO - App is up to date
+2025-12-03 11:16:47,588 - INFO - No updates needed
+2025-12-03 11:16:47,588 - INFO - ========================================
+2025-12-03 11:16:47,588 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:16:47,588 - INFO - ========================================
+2025-12-03 11:16:48,097 - INFO - Calling login_gui.main()
+2025-12-03 11:19:48,899 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:19:48,899 - INFO - Version from config: 1.1.3
+2025-12-03 11:19:48,900 - INFO - Single instance lock acquired
+2025-12-03 11:19:48,900 - INFO - ==================================================
+2025-12-03 11:19:48,900 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:19:48,900 - INFO - ==================================================
+2025-12-03 11:19:48,900 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:19:48,900 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:19:48,901 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:19:48,901 - INFO - No pending updates
+2025-12-03 11:19:48,901 - INFO - ==================================================
+2025-12-03 11:19:48,901 - INFO - Initializing application files...
+2025-12-03 11:19:48,901 - INFO - Application files initialized successfully
+2025-12-03 11:19:48,901 - INFO - ============================================================
+2025-12-03 11:19:48,902 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:19:48,902 - INFO - ============================================================
+2025-12-03 11:19:48,902 - INFO - Checking for updates using latest release...
+2025-12-03 11:19:48,902 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:19:48,902 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:19:48,905 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:19:49,353 - INFO - Request successful (Status: 200)
+2025-12-03 11:19:49,353 - INFO - Latest release: 1.1.3
+2025-12-03 11:19:49,353 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:19:49,353 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:19:49,353 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:19:49,354 - INFO - Current version: 1.1.3
+2025-12-03 11:19:49,354 - INFO - Latest version: 1.1.3
+2025-12-03 11:19:49,354 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:19:49,354 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:19:49,354 - INFO - App is up to date
+2025-12-03 11:19:49,354 - INFO - No updates needed
+2025-12-03 11:19:49,354 - INFO - ========================================
+2025-12-03 11:19:49,355 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:19:49,355 - INFO - ========================================
+2025-12-03 11:19:49,874 - INFO - Calling login_gui.main()
+2025-12-03 11:20:50,711 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:20:50,711 - INFO - Version from config: 1.1.3
+2025-12-03 11:20:50,712 - INFO - Single instance lock acquired
+2025-12-03 11:20:50,712 - INFO - ==================================================
+2025-12-03 11:20:50,712 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:20:50,712 - INFO - ==================================================
+2025-12-03 11:20:50,712 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:20:50,712 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:20:50,713 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:20:50,713 - INFO - No pending updates
+2025-12-03 11:20:50,713 - INFO - ==================================================
+2025-12-03 11:20:50,713 - INFO - Initializing application files...
+2025-12-03 11:20:50,713 - INFO - Application files initialized successfully
+2025-12-03 11:20:50,714 - INFO - ============================================================
+2025-12-03 11:20:50,714 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:20:50,714 - INFO - ============================================================
+2025-12-03 11:20:50,714 - INFO - Checking for updates using latest release...
+2025-12-03 11:20:50,714 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:20:50,714 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:20:50,714 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:20:51,162 - INFO - Request successful (Status: 200)
+2025-12-03 11:20:51,162 - INFO - Latest release: 1.1.3
+2025-12-03 11:20:51,162 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:20:51,162 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:20:51,162 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:20:51,163 - INFO - Current version: 1.1.3
+2025-12-03 11:20:51,163 - INFO - Latest version: 1.1.3
+2025-12-03 11:20:51,163 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:20:51,163 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:20:51,163 - INFO - App is up to date
+2025-12-03 11:20:51,163 - INFO - No updates needed
+2025-12-03 11:20:51,163 - INFO - ========================================
+2025-12-03 11:20:51,163 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:20:51,164 - INFO - ========================================
+2025-12-03 11:20:51,677 - INFO - Calling login_gui.main()
+2025-12-03 11:21:37,196 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:21:37,196 - INFO - Version from config: 1.1.3
+2025-12-03 11:21:37,196 - INFO - Single instance lock acquired
+2025-12-03 11:21:37,196 - INFO - ==================================================
+2025-12-03 11:21:37,196 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:21:37,197 - INFO - ==================================================
+2025-12-03 11:21:37,197 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:21:37,197 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:21:37,197 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:21:37,197 - INFO - No pending updates
+2025-12-03 11:21:37,197 - INFO - ==================================================
+2025-12-03 11:21:37,198 - INFO - Initializing application files...
+2025-12-03 11:21:37,198 - INFO - Application files initialized successfully
+2025-12-03 11:21:37,198 - INFO - ============================================================
+2025-12-03 11:21:37,198 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:21:37,198 - INFO - ============================================================
+2025-12-03 11:21:37,198 - INFO - Checking for updates using latest release...
+2025-12-03 11:21:37,199 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:21:37,199 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:21:37,199 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:21:37,661 - INFO - Request successful (Status: 200)
+2025-12-03 11:21:37,661 - INFO - Latest release: 1.1.3
+2025-12-03 11:21:37,661 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:21:37,662 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:21:37,662 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:21:37,662 - INFO - Current version: 1.1.3
+2025-12-03 11:21:37,662 - INFO - Latest version: 1.1.3
+2025-12-03 11:21:37,662 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:21:37,662 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:21:37,662 - INFO - App is up to date
+2025-12-03 11:21:37,662 - INFO - No updates needed
+2025-12-03 11:21:37,663 - INFO - ========================================
+2025-12-03 11:21:37,663 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:21:37,663 - INFO - ========================================
+2025-12-03 11:21:38,166 - INFO - Calling login_gui.main()
+2025-12-03 11:23:01,576 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:23:01,577 - INFO - Version from config: 1.1.3
+2025-12-03 11:23:01,577 - INFO - Single instance lock acquired
+2025-12-03 11:23:01,577 - INFO - ==================================================
+2025-12-03 11:23:01,577 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:23:01,577 - INFO - ==================================================
+2025-12-03 11:23:01,578 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:23:01,578 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:23:01,578 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:23:01,578 - INFO - No pending updates
+2025-12-03 11:23:01,578 - INFO - ==================================================
+2025-12-03 11:23:01,578 - INFO - Initializing application files...
+2025-12-03 11:23:01,579 - INFO - Application files initialized successfully
+2025-12-03 11:23:01,579 - INFO - ============================================================
+2025-12-03 11:23:01,579 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:23:01,579 - INFO - ============================================================
+2025-12-03 11:23:01,579 - INFO - Checking for updates using latest release...
+2025-12-03 11:23:01,579 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:23:01,579 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:23:01,579 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:23:02,007 - INFO - Request successful (Status: 200)
+2025-12-03 11:23:02,007 - INFO - Latest release: 1.1.3
+2025-12-03 11:23:02,007 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:23:02,007 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:23:02,007 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:23:02,008 - INFO - Current version: 1.1.3
+2025-12-03 11:23:02,008 - INFO - Latest version: 1.1.3
+2025-12-03 11:23:02,008 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:23:02,008 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:23:02,008 - INFO - App is up to date
+2025-12-03 11:23:02,008 - INFO - No updates needed
+2025-12-03 11:23:02,008 - INFO - ========================================
+2025-12-03 11:23:02,008 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:23:02,009 - INFO - ========================================
+2025-12-03 11:23:02,510 - INFO - Calling login_gui.main()
+2025-12-03 11:27:26,091 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:27:26,091 - INFO - Version from config: 1.1.3
+2025-12-03 11:27:26,092 - INFO - Single instance lock acquired
+2025-12-03 11:27:26,092 - INFO - ==================================================
+2025-12-03 11:27:26,092 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:27:26,092 - INFO - ==================================================
+2025-12-03 11:27:26,092 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:27:26,092 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:27:26,093 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:27:26,093 - INFO - No pending updates
+2025-12-03 11:27:26,093 - INFO - ==================================================
+2025-12-03 11:27:26,093 - INFO - Initializing application files...
+2025-12-03 11:27:26,093 - INFO - Application files initialized successfully
+2025-12-03 11:27:26,094 - INFO - ============================================================
+2025-12-03 11:27:26,094 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:27:26,094 - INFO - ============================================================
+2025-12-03 11:27:26,094 - INFO - Checking for updates using latest release...
+2025-12-03 11:27:26,094 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:27:26,094 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:27:26,094 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:27:26,556 - INFO - Request successful (Status: 200)
+2025-12-03 11:27:26,556 - INFO - Latest release: 1.1.3
+2025-12-03 11:27:26,556 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:27:26,556 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:27:26,556 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:27:26,557 - INFO - Current version: 1.1.3
+2025-12-03 11:27:26,557 - INFO - Latest version: 1.1.3
+2025-12-03 11:27:26,557 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:27:26,557 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:27:26,557 - INFO - App is up to date
+2025-12-03 11:27:26,557 - INFO - No updates needed
+2025-12-03 11:27:26,557 - INFO - ========================================
+2025-12-03 11:27:26,558 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:27:26,558 - INFO - ========================================
+2025-12-03 11:27:27,085 - INFO - Calling login_gui.main()
+2025-12-03 11:29:59,630 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:29:59,630 - INFO - Version from config: 1.1.3
+2025-12-03 11:29:59,630 - INFO - Single instance lock acquired
+2025-12-03 11:29:59,630 - INFO - ==================================================
+2025-12-03 11:29:59,630 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:29:59,631 - INFO - ==================================================
+2025-12-03 11:29:59,631 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:29:59,631 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:29:59,631 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:29:59,631 - INFO - No pending updates
+2025-12-03 11:29:59,631 - INFO - ==================================================
+2025-12-03 11:29:59,632 - INFO - Initializing application files...
+2025-12-03 11:29:59,632 - INFO - Application files initialized successfully
+2025-12-03 11:29:59,632 - INFO - ============================================================
+2025-12-03 11:29:59,632 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:29:59,632 - INFO - ============================================================
+2025-12-03 11:29:59,632 - INFO - Checking for updates using latest release...
+2025-12-03 11:29:59,632 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:29:59,633 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:29:59,633 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:29:59,767 - INFO - Request successful (Status: 200)
+2025-12-03 11:29:59,767 - INFO - Latest release: 1.1.3
+2025-12-03 11:29:59,767 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:29:59,767 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:29:59,767 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:29:59,767 - INFO - Current version: 1.1.3
+2025-12-03 11:29:59,768 - INFO - Latest version: 1.1.3
+2025-12-03 11:29:59,768 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:29:59,768 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:29:59,768 - INFO - App is up to date
+2025-12-03 11:29:59,768 - INFO - No updates needed
+2025-12-03 11:29:59,768 - INFO - ========================================
+2025-12-03 11:29:59,768 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:29:59,768 - INFO - ========================================
+2025-12-03 11:30:00,276 - INFO - Calling login_gui.main()
+2025-12-03 11:34:59,877 - INFO - Configuration loaded from updater.ini
+2025-12-03 11:34:59,877 - INFO - Version from config: 1.1.3
+2025-12-03 11:34:59,878 - INFO - Single instance lock acquired
+2025-12-03 11:34:59,878 - INFO - ==================================================
+2025-12-03 11:34:59,878 - INFO - VERSION STATUS DEBUG
+2025-12-03 11:34:59,878 - INFO - ==================================================
+2025-12-03 11:34:59,878 - INFO - version.txt contains: '1.1.3'
+2025-12-03 11:34:59,878 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 11:34:59,879 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 11:34:59,879 - INFO - No pending updates
+2025-12-03 11:34:59,879 - INFO - ==================================================
+2025-12-03 11:34:59,879 - INFO - Initializing application files...
+2025-12-03 11:34:59,879 - INFO - Application files initialized successfully
+2025-12-03 11:34:59,879 - INFO - ============================================================
+2025-12-03 11:34:59,880 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 11:34:59,880 - INFO - ============================================================
+2025-12-03 11:34:59,880 - INFO - Checking for updates using latest release...
+2025-12-03 11:34:59,880 - INFO - Fetching latest release information from GitHub...
+2025-12-03 11:34:59,880 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 11:34:59,880 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 11:35:00,563 - INFO - Request successful (Status: 200)
+2025-12-03 11:35:00,564 - INFO - Latest release: 1.1.3
+2025-12-03 11:35:00,564 - INFO - Release name: Update V 1.1.3
+2025-12-03 11:35:00,564 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 11:35:00,564 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 11:35:00,564 - INFO - Current version: 1.1.3
+2025-12-03 11:35:00,565 - INFO - Latest version: 1.1.3
+2025-12-03 11:35:00,565 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 11:35:00,565 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 11:35:00,565 - INFO - App is up to date
+2025-12-03 11:35:00,565 - INFO - No updates needed
+2025-12-03 11:35:00,565 - INFO - ========================================
+2025-12-03 11:35:00,565 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 11:35:00,565 - INFO - ========================================
+2025-12-03 11:35:01,074 - INFO - Calling login_gui.main()
+2025-12-03 21:04:02,767 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:04:02,768 - INFO - Version from config: 1.1.3
+2025-12-03 21:04:02,769 - INFO - Single instance lock acquired
+2025-12-03 21:04:02,769 - INFO - ==================================================
+2025-12-03 21:04:02,769 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:04:02,769 - INFO - ==================================================
+2025-12-03 21:04:02,769 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:04:02,770 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:04:02,770 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:04:02,770 - INFO - No pending updates
+2025-12-03 21:04:02,770 - INFO - ==================================================
+2025-12-03 21:04:02,771 - INFO - Initializing application files...
+2025-12-03 21:04:02,771 - INFO - Application files initialized successfully
+2025-12-03 21:04:02,771 - INFO - ============================================================
+2025-12-03 21:04:02,771 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:04:02,771 - INFO - ============================================================
+2025-12-03 21:04:02,772 - INFO - Checking for updates using latest release...
+2025-12-03 21:04:02,772 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:04:02,772 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:04:02,772 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:04:03,968 - INFO - Request successful (Status: 200)
+2025-12-03 21:04:03,968 - INFO - Latest release: 1.1.3
+2025-12-03 21:04:03,968 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:04:03,968 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:04:03,968 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:04:03,969 - INFO - Current version: 1.1.3
+2025-12-03 21:04:03,969 - INFO - Latest version: 1.1.3
+2025-12-03 21:04:03,970 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:04:03,970 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:04:03,970 - INFO - App is up to date
+2025-12-03 21:04:03,970 - INFO - No updates needed
+2025-12-03 21:04:03,970 - INFO - ========================================
+2025-12-03 21:04:03,970 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:04:03,970 - INFO - ========================================
+2025-12-03 21:04:05,763 - INFO - Calling login_gui.main()
+2025-12-03 21:10:54,007 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:10:54,007 - INFO - Version from config: 1.1.3
+2025-12-03 21:10:54,007 - INFO - Single instance lock acquired
+2025-12-03 21:10:54,007 - INFO - ==================================================
+2025-12-03 21:10:54,008 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:10:54,008 - INFO - ==================================================
+2025-12-03 21:10:54,008 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:10:54,008 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:10:54,008 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:10:54,008 - INFO - No pending updates
+2025-12-03 21:10:54,009 - INFO - ==================================================
+2025-12-03 21:10:54,009 - INFO - Initializing application files...
+2025-12-03 21:10:54,009 - INFO - Application files initialized successfully
+2025-12-03 21:10:54,009 - INFO - ============================================================
+2025-12-03 21:10:54,009 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:10:54,010 - INFO - ============================================================
+2025-12-03 21:10:54,010 - INFO - Checking for updates using latest release...
+2025-12-03 21:10:54,010 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:10:54,010 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:10:54,010 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:10:54,472 - INFO - Request successful (Status: 200)
+2025-12-03 21:10:54,472 - INFO - Latest release: 1.1.3
+2025-12-03 21:10:54,472 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:10:54,472 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:10:54,472 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:10:54,473 - INFO - Current version: 1.1.3
+2025-12-03 21:10:54,473 - INFO - Latest version: 1.1.3
+2025-12-03 21:10:54,473 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:10:54,473 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:10:54,473 - INFO - App is up to date
+2025-12-03 21:10:54,473 - INFO - No updates needed
+2025-12-03 21:10:54,474 - INFO - ========================================
+2025-12-03 21:10:54,474 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:10:54,474 - INFO - ========================================
+2025-12-03 21:10:55,342 - INFO - Calling login_gui.main()
+2025-12-03 21:13:20,834 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:13:20,834 - INFO - Version from config: 1.1.3
+2025-12-03 21:13:20,834 - INFO - Single instance lock acquired
+2025-12-03 21:13:20,835 - INFO - ==================================================
+2025-12-03 21:13:20,835 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:13:20,835 - INFO - ==================================================
+2025-12-03 21:13:20,835 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:13:20,835 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:13:20,836 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:13:20,836 - INFO - No pending updates
+2025-12-03 21:13:20,836 - INFO - ==================================================
+2025-12-03 21:13:20,836 - INFO - Initializing application files...
+2025-12-03 21:13:20,837 - INFO - Application files initialized successfully
+2025-12-03 21:13:20,837 - INFO - ============================================================
+2025-12-03 21:13:20,837 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:13:20,837 - INFO - ============================================================
+2025-12-03 21:13:20,837 - INFO - Checking for updates using latest release...
+2025-12-03 21:13:20,837 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:13:20,838 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:13:20,838 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:13:21,278 - INFO - Request successful (Status: 200)
+2025-12-03 21:13:21,278 - INFO - Latest release: 1.1.3
+2025-12-03 21:13:21,278 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:13:21,278 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:13:21,279 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:13:21,279 - INFO - Current version: 1.1.3
+2025-12-03 21:13:21,279 - INFO - Latest version: 1.1.3
+2025-12-03 21:13:21,279 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:13:21,280 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:13:21,280 - INFO - App is up to date
+2025-12-03 21:13:21,280 - INFO - No updates needed
+2025-12-03 21:13:21,280 - INFO - ========================================
+2025-12-03 21:13:21,280 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:13:21,280 - INFO - ========================================
+2025-12-03 21:13:21,992 - INFO - Calling login_gui.main()
+2025-12-03 21:16:21,682 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:16:21,682 - INFO - Version from config: 1.1.3
+2025-12-03 21:16:21,683 - INFO - Single instance lock acquired
+2025-12-03 21:16:21,683 - INFO - ==================================================
+2025-12-03 21:16:21,683 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:16:21,683 - INFO - ==================================================
+2025-12-03 21:16:21,683 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:16:21,683 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:16:21,684 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:16:21,684 - INFO - No pending updates
+2025-12-03 21:16:21,684 - INFO - ==================================================
+2025-12-03 21:16:21,684 - INFO - Initializing application files...
+2025-12-03 21:16:21,684 - INFO - Application files initialized successfully
+2025-12-03 21:16:21,685 - INFO - ============================================================
+2025-12-03 21:16:21,685 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:16:21,685 - INFO - ============================================================
+2025-12-03 21:16:21,685 - INFO - Checking for updates using latest release...
+2025-12-03 21:16:21,685 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:16:21,685 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:16:21,685 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:16:22,117 - INFO - Request successful (Status: 200)
+2025-12-03 21:16:22,117 - INFO - Latest release: 1.1.3
+2025-12-03 21:16:22,117 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:16:22,117 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:16:22,117 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:16:22,117 - INFO - Current version: 1.1.3
+2025-12-03 21:16:22,118 - INFO - Latest version: 1.1.3
+2025-12-03 21:16:22,118 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:16:22,118 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:16:22,118 - INFO - App is up to date
+2025-12-03 21:16:22,118 - INFO - No updates needed
+2025-12-03 21:16:22,118 - INFO - ========================================
+2025-12-03 21:16:22,118 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:16:22,119 - INFO - ========================================
+2025-12-03 21:16:22,761 - INFO - Calling login_gui.main()
+2025-12-03 21:21:34,583 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:21:34,583 - INFO - Version from config: 1.1.3
+2025-12-03 21:21:34,583 - INFO - Single instance lock acquired
+2025-12-03 21:21:34,583 - INFO - ==================================================
+2025-12-03 21:21:34,584 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:21:34,584 - INFO - ==================================================
+2025-12-03 21:21:34,584 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:21:34,584 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:21:34,585 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:21:34,585 - INFO - No pending updates
+2025-12-03 21:21:34,585 - INFO - ==================================================
+2025-12-03 21:21:34,585 - INFO - Initializing application files...
+2025-12-03 21:21:34,585 - INFO - Application files initialized successfully
+2025-12-03 21:21:34,585 - INFO - ============================================================
+2025-12-03 21:21:34,586 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:21:34,586 - INFO - ============================================================
+2025-12-03 21:21:34,586 - INFO - Checking for updates using latest release...
+2025-12-03 21:21:34,586 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:21:34,586 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:21:34,586 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:21:35,046 - INFO - Request successful (Status: 200)
+2025-12-03 21:21:35,046 - INFO - Latest release: 1.1.3
+2025-12-03 21:21:35,046 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:21:35,046 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:21:35,046 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:21:35,047 - INFO - Current version: 1.1.3
+2025-12-03 21:21:35,047 - INFO - Latest version: 1.1.3
+2025-12-03 21:21:35,047 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:21:35,047 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:21:35,047 - INFO - App is up to date
+2025-12-03 21:21:35,047 - INFO - No updates needed
+2025-12-03 21:21:35,047 - INFO - ========================================
+2025-12-03 21:21:35,047 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:21:35,048 - INFO - ========================================
+2025-12-03 21:21:35,655 - INFO - Calling login_gui.main()
+2025-12-03 21:21:48,692 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:21:48,692 - INFO - Version from config: 1.1.3
+2025-12-03 21:21:48,693 - INFO - Single instance lock acquired
+2025-12-03 21:21:48,693 - INFO - ==================================================
+2025-12-03 21:21:48,693 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:21:48,693 - INFO - ==================================================
+2025-12-03 21:21:48,694 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:21:48,694 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:21:48,694 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:21:48,694 - INFO - No pending updates
+2025-12-03 21:21:48,695 - INFO - ==================================================
+2025-12-03 21:21:48,695 - INFO - Initializing application files...
+2025-12-03 21:21:48,695 - INFO - Application files initialized successfully
+2025-12-03 21:21:48,695 - INFO - ============================================================
+2025-12-03 21:21:48,695 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:21:48,695 - INFO - ============================================================
+2025-12-03 21:21:48,696 - INFO - Checking for updates using latest release...
+2025-12-03 21:21:48,696 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:21:48,696 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:21:48,696 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:21:48,815 - INFO - Request successful (Status: 200)
+2025-12-03 21:21:48,816 - INFO - Latest release: 1.1.3
+2025-12-03 21:21:48,816 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:21:48,816 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:21:48,816 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:21:48,816 - INFO - Current version: 1.1.3
+2025-12-03 21:21:48,816 - INFO - Latest version: 1.1.3
+2025-12-03 21:21:48,817 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:21:48,817 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:21:48,817 - INFO - App is up to date
+2025-12-03 21:21:48,817 - INFO - No updates needed
+2025-12-03 21:21:48,817 - INFO - ========================================
+2025-12-03 21:21:48,817 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:21:48,817 - INFO - ========================================
+2025-12-03 21:21:49,435 - INFO - Calling login_gui.main()
+2025-12-03 21:23:19,215 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:23:19,216 - INFO - Version from config: 1.1.3
+2025-12-03 21:23:19,216 - INFO - Single instance lock acquired
+2025-12-03 21:23:19,216 - INFO - ==================================================
+2025-12-03 21:23:19,216 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:23:19,216 - INFO - ==================================================
+2025-12-03 21:23:19,217 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:23:19,217 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:23:19,217 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:23:19,217 - INFO - No pending updates
+2025-12-03 21:23:19,218 - INFO - ==================================================
+2025-12-03 21:23:19,218 - INFO - Initializing application files...
+2025-12-03 21:23:19,218 - INFO - Application files initialized successfully
+2025-12-03 21:23:19,218 - INFO - ============================================================
+2025-12-03 21:23:19,218 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:23:19,218 - INFO - ============================================================
+2025-12-03 21:23:19,219 - INFO - Checking for updates using latest release...
+2025-12-03 21:23:19,219 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:23:19,219 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:23:19,219 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:23:19,682 - INFO - Request successful (Status: 200)
+2025-12-03 21:23:19,682 - INFO - Latest release: 1.1.3
+2025-12-03 21:23:19,682 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:23:19,683 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:23:19,683 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:23:19,683 - INFO - Current version: 1.1.3
+2025-12-03 21:23:19,683 - INFO - Latest version: 1.1.3
+2025-12-03 21:23:19,683 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:23:19,683 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:23:19,684 - INFO - App is up to date
+2025-12-03 21:23:19,684 - INFO - No updates needed
+2025-12-03 21:23:19,684 - INFO - ========================================
+2025-12-03 21:23:19,684 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:23:19,684 - INFO - ========================================
+2025-12-03 21:23:20,288 - INFO - Calling login_gui.main()
+2025-12-03 21:26:46,974 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:26:46,974 - INFO - Version from config: 1.1.3
+2025-12-03 21:26:46,975 - INFO - Single instance lock acquired
+2025-12-03 21:26:46,975 - INFO - ==================================================
+2025-12-03 21:26:46,975 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:26:46,975 - INFO - ==================================================
+2025-12-03 21:26:46,975 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:26:46,975 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:26:46,976 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:26:46,976 - INFO - No pending updates
+2025-12-03 21:26:46,976 - INFO - ==================================================
+2025-12-03 21:26:46,976 - INFO - Initializing application files...
+2025-12-03 21:26:46,977 - INFO - Application files initialized successfully
+2025-12-03 21:26:46,977 - INFO - ============================================================
+2025-12-03 21:26:46,977 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:26:46,977 - INFO - ============================================================
+2025-12-03 21:26:46,977 - INFO - Checking for updates using latest release...
+2025-12-03 21:26:46,977 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:26:46,977 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:26:46,978 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:26:47,425 - INFO - Request successful (Status: 200)
+2025-12-03 21:26:47,425 - INFO - Latest release: 1.1.3
+2025-12-03 21:26:47,425 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:26:47,425 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:26:47,426 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:26:47,426 - INFO - Current version: 1.1.3
+2025-12-03 21:26:47,426 - INFO - Latest version: 1.1.3
+2025-12-03 21:26:47,426 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:26:47,426 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:26:47,426 - INFO - App is up to date
+2025-12-03 21:26:47,427 - INFO - No updates needed
+2025-12-03 21:26:47,427 - INFO - ========================================
+2025-12-03 21:26:47,427 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:26:47,427 - INFO - ========================================
+2025-12-03 21:26:48,081 - INFO - Calling login_gui.main()
+2025-12-03 21:31:18,806 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:31:18,806 - INFO - Version from config: 1.1.3
+2025-12-03 21:31:18,806 - INFO - Single instance lock acquired
+2025-12-03 21:31:18,806 - INFO - ==================================================
+2025-12-03 21:31:18,806 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:31:18,807 - INFO - ==================================================
+2025-12-03 21:31:18,807 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:31:18,807 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:31:18,807 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:31:18,807 - INFO - No pending updates
+2025-12-03 21:31:18,808 - INFO - ==================================================
+2025-12-03 21:31:18,808 - INFO - Initializing application files...
+2025-12-03 21:31:18,808 - INFO - Application files initialized successfully
+2025-12-03 21:31:18,808 - INFO - ============================================================
+2025-12-03 21:31:18,808 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:31:18,808 - INFO - ============================================================
+2025-12-03 21:31:18,809 - INFO - Checking for updates using latest release...
+2025-12-03 21:31:18,809 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:31:18,809 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:31:18,809 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:31:19,245 - INFO - Request successful (Status: 200)
+2025-12-03 21:31:19,245 - INFO - Latest release: 1.1.3
+2025-12-03 21:31:19,245 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:31:19,245 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:31:19,245 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:31:19,246 - INFO - Current version: 1.1.3
+2025-12-03 21:31:19,246 - INFO - Latest version: 1.1.3
+2025-12-03 21:31:19,246 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:31:19,246 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:31:19,246 - INFO - App is up to date
+2025-12-03 21:31:19,246 - INFO - No updates needed
+2025-12-03 21:31:19,246 - INFO - ========================================
+2025-12-03 21:31:19,247 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:31:19,247 - INFO - ========================================
+2025-12-03 21:31:19,868 - INFO - Calling login_gui.main()
+2025-12-03 21:37:24,800 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:37:24,800 - INFO - Version from config: 1.1.3
+2025-12-03 21:37:24,801 - INFO - Single instance lock acquired
+2025-12-03 21:37:24,801 - INFO - ==================================================
+2025-12-03 21:37:24,801 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:37:24,801 - INFO - ==================================================
+2025-12-03 21:37:24,802 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:37:24,802 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:37:24,802 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:37:24,802 - INFO - No pending updates
+2025-12-03 21:37:24,803 - INFO - ==================================================
+2025-12-03 21:37:24,803 - INFO - Initializing application files...
+2025-12-03 21:37:24,803 - INFO - Application files initialized successfully
+2025-12-03 21:37:24,803 - INFO - ============================================================
+2025-12-03 21:37:24,803 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:37:24,803 - INFO - ============================================================
+2025-12-03 21:37:24,803 - INFO - Checking for updates using latest release...
+2025-12-03 21:37:24,804 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:37:24,804 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:37:24,804 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:37:25,263 - INFO - Request successful (Status: 200)
+2025-12-03 21:37:25,263 - INFO - Latest release: 1.1.3
+2025-12-03 21:37:25,263 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:37:25,263 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:37:25,263 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:37:25,264 - INFO - Current version: 1.1.3
+2025-12-03 21:37:25,264 - INFO - Latest version: 1.1.3
+2025-12-03 21:37:25,264 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:37:25,264 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:37:25,264 - INFO - App is up to date
+2025-12-03 21:37:25,264 - INFO - No updates needed
+2025-12-03 21:37:25,264 - INFO - ========================================
+2025-12-03 21:37:25,265 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:37:25,265 - INFO - ========================================
+2025-12-03 21:37:25,945 - INFO - Calling login_gui.main()
+2025-12-03 21:41:08,664 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:41:08,664 - INFO - Version from config: 1.1.3
+2025-12-03 21:41:08,665 - INFO - Single instance lock acquired
+2025-12-03 21:41:08,665 - INFO - ==================================================
+2025-12-03 21:41:08,665 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:41:08,666 - INFO - ==================================================
+2025-12-03 21:41:08,666 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:41:08,666 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:41:08,666 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:41:08,667 - INFO - No pending updates
+2025-12-03 21:41:08,667 - INFO - ==================================================
+2025-12-03 21:41:08,667 - INFO - Initializing application files...
+2025-12-03 21:41:08,667 - INFO - Application files initialized successfully
+2025-12-03 21:41:08,667 - INFO - ============================================================
+2025-12-03 21:41:08,667 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:41:08,668 - INFO - ============================================================
+2025-12-03 21:41:08,668 - INFO - Checking for updates using latest release...
+2025-12-03 21:41:08,668 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:41:08,668 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:41:08,668 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:41:09,182 - INFO - Request successful (Status: 200)
+2025-12-03 21:41:09,182 - INFO - Latest release: 1.1.3
+2025-12-03 21:41:09,182 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:41:09,182 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:41:09,182 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:41:09,183 - INFO - Current version: 1.1.3
+2025-12-03 21:41:09,183 - INFO - Latest version: 1.1.3
+2025-12-03 21:41:09,183 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:41:09,183 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:41:09,183 - INFO - App is up to date
+2025-12-03 21:41:09,183 - INFO - No updates needed
+2025-12-03 21:41:09,183 - INFO - ========================================
+2025-12-03 21:41:09,183 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:41:09,183 - INFO - ========================================
+2025-12-03 21:41:09,815 - INFO - Calling login_gui.main()
+2025-12-03 21:44:38,720 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:44:38,721 - INFO - Version from config: 1.1.3
+2025-12-03 21:44:38,721 - INFO - Single instance lock acquired
+2025-12-03 21:44:38,721 - INFO - ==================================================
+2025-12-03 21:44:38,721 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:44:38,722 - INFO - ==================================================
+2025-12-03 21:44:38,722 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:44:38,722 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:44:38,722 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:44:38,722 - INFO - No pending updates
+2025-12-03 21:44:38,723 - INFO - ==================================================
+2025-12-03 21:44:38,723 - INFO - Initializing application files...
+2025-12-03 21:44:38,723 - INFO - Application files initialized successfully
+2025-12-03 21:44:38,723 - INFO - ============================================================
+2025-12-03 21:44:38,723 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:44:38,723 - INFO - ============================================================
+2025-12-03 21:44:38,724 - INFO - Checking for updates using latest release...
+2025-12-03 21:44:38,724 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:44:38,724 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:44:38,724 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:44:39,158 - INFO - Request successful (Status: 200)
+2025-12-03 21:44:39,158 - INFO - Latest release: 1.1.3
+2025-12-03 21:44:39,158 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:44:39,158 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:44:39,158 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:44:39,159 - INFO - Current version: 1.1.3
+2025-12-03 21:44:39,159 - INFO - Latest version: 1.1.3
+2025-12-03 21:44:39,159 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:44:39,159 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:44:39,159 - INFO - App is up to date
+2025-12-03 21:44:39,159 - INFO - No updates needed
+2025-12-03 21:44:39,159 - INFO - ========================================
+2025-12-03 21:44:39,160 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:44:39,160 - INFO - ========================================
+2025-12-03 21:44:39,803 - INFO - Calling login_gui.main()
+2025-12-03 21:48:11,489 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:48:11,489 - INFO - Version from config: 1.1.3
+2025-12-03 21:48:11,490 - INFO - Single instance lock acquired
+2025-12-03 21:48:11,490 - INFO - ==================================================
+2025-12-03 21:48:11,490 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:48:11,490 - INFO - ==================================================
+2025-12-03 21:48:11,490 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:48:11,490 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:48:11,491 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:48:11,491 - INFO - No pending updates
+2025-12-03 21:48:11,491 - INFO - ==================================================
+2025-12-03 21:48:11,491 - INFO - Initializing application files...
+2025-12-03 21:48:11,491 - INFO - Application files initialized successfully
+2025-12-03 21:48:11,492 - INFO - ============================================================
+2025-12-03 21:48:11,492 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:48:11,492 - INFO - ============================================================
+2025-12-03 21:48:11,492 - INFO - Checking for updates using latest release...
+2025-12-03 21:48:11,492 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:48:11,492 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:48:11,492 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:48:11,922 - INFO - Request successful (Status: 200)
+2025-12-03 21:48:11,922 - INFO - Latest release: 1.1.3
+2025-12-03 21:48:11,922 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:48:11,922 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:48:11,922 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:48:11,923 - INFO - Current version: 1.1.3
+2025-12-03 21:48:11,923 - INFO - Latest version: 1.1.3
+2025-12-03 21:48:11,923 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:48:11,923 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:48:11,923 - INFO - App is up to date
+2025-12-03 21:48:11,923 - INFO - No updates needed
+2025-12-03 21:48:11,923 - INFO - ========================================
+2025-12-03 21:48:11,924 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:48:11,924 - INFO - ========================================
+2025-12-03 21:48:12,514 - INFO - Calling login_gui.main()
+2025-12-03 21:51:35,449 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:51:35,450 - INFO - Version from config: 1.1.3
+2025-12-03 21:51:35,450 - INFO - Single instance lock acquired
+2025-12-03 21:51:35,451 - INFO - ==================================================
+2025-12-03 21:51:35,451 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:51:35,451 - INFO - ==================================================
+2025-12-03 21:51:35,451 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:51:35,451 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:51:35,452 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:51:35,452 - INFO - No pending updates
+2025-12-03 21:51:35,452 - INFO - ==================================================
+2025-12-03 21:51:35,452 - INFO - Initializing application files...
+2025-12-03 21:51:35,452 - INFO - Application files initialized successfully
+2025-12-03 21:51:35,453 - INFO - ============================================================
+2025-12-03 21:51:35,453 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:51:35,453 - INFO - ============================================================
+2025-12-03 21:51:35,453 - INFO - Checking for updates using latest release...
+2025-12-03 21:51:35,453 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:51:35,453 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:51:35,453 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:51:35,936 - INFO - Request successful (Status: 200)
+2025-12-03 21:51:35,936 - INFO - Latest release: 1.1.3
+2025-12-03 21:51:35,936 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:51:35,936 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:51:35,936 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:51:35,937 - INFO - Current version: 1.1.3
+2025-12-03 21:51:35,937 - INFO - Latest version: 1.1.3
+2025-12-03 21:51:35,937 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:51:35,937 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:51:35,937 - INFO - App is up to date
+2025-12-03 21:51:35,937 - INFO - No updates needed
+2025-12-03 21:51:35,938 - INFO - ========================================
+2025-12-03 21:51:35,938 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:51:35,938 - INFO - ========================================
+2025-12-03 21:51:36,543 - INFO - Calling login_gui.main()
+2025-12-03 21:52:49,923 - INFO - Configuration loaded from updater.ini
+2025-12-03 21:52:49,923 - INFO - Version from config: 1.1.3
+2025-12-03 21:52:49,923 - INFO - Single instance lock acquired
+2025-12-03 21:52:49,923 - INFO - ==================================================
+2025-12-03 21:52:49,923 - INFO - VERSION STATUS DEBUG
+2025-12-03 21:52:49,924 - INFO - ==================================================
+2025-12-03 21:52:49,924 - INFO - version.txt contains: '1.1.3'
+2025-12-03 21:52:49,924 - INFO - CONFIG current_version: '1.1.3'
+2025-12-03 21:52:49,924 - INFO - updater.ini contains version: '1.1.3'
+2025-12-03 21:52:49,925 - INFO - No pending updates
+2025-12-03 21:52:49,925 - INFO - ==================================================
+2025-12-03 21:52:49,925 - INFO - Initializing application files...
+2025-12-03 21:52:49,925 - INFO - Application files initialized successfully
+2025-12-03 21:52:49,925 - INFO - ============================================================
+2025-12-03 21:52:49,925 - INFO - RMS LATEST RELEASE UPDATER STARTING
+2025-12-03 21:52:49,925 - INFO - ============================================================
+2025-12-03 21:52:49,926 - INFO - Checking for updates using latest release...
+2025-12-03 21:52:49,926 - INFO - Fetching latest release information from GitHub...
+2025-12-03 21:52:49,926 - INFO - API URL: https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest
+2025-12-03 21:52:49,926 - INFO - Attempting to connect to https://api.github.com/repos/food2g0/Centralized-Image-Uploader/releases/latest (attempt 1/3)
+2025-12-03 21:52:50,383 - INFO - Request successful (Status: 200)
+2025-12-03 21:52:50,384 - INFO - Latest release: 1.1.3
+2025-12-03 21:52:50,384 - INFO - Release name: Update V 1.1.3
+2025-12-03 21:52:50,384 - INFO - Published: 2025-12-02T12:24:16Z
+2025-12-03 21:52:50,384 - INFO - Download URL: https://github.com/food2g0/Centralized-Image-Uploader/releases/download/v1.1.3/installer.exe
+2025-12-03 21:52:50,384 - INFO - Current version: 1.1.3
+2025-12-03 21:52:50,384 - INFO - Latest version: 1.1.3
+2025-12-03 21:52:50,384 - INFO - Comparing versions: '1.1.3' vs '1.1.3'
+2025-12-03 21:52:50,385 - INFO - Semantic version comparison: Versions are equal
+2025-12-03 21:52:50,385 - INFO - App is up to date
+2025-12-03 21:52:50,385 - INFO - No updates needed
+2025-12-03 21:52:50,385 - INFO - ========================================
+2025-12-03 21:52:50,385 - INFO - LAUNCHING MAIN APPLICATION
+2025-12-03 21:52:50,385 - INFO - ========================================
+2025-12-03 21:52:50,955 - INFO - Calling login_gui.main()
