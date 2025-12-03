@@ -1123,11 +1123,10 @@ def open_cash_management(next_user_data):
 
     def add_files():
         file_paths = filedialog.askopenfilenames(
-            title="Select Cash Management Documents",
+            title="Select Documents",
             filetypes=[
-                ("All Supported", "*.pdf *.jpg *.jpeg *.png *.gif *.bmp *.webp *.jfif"),
-                ("Documents", "*.pdf"),
-                ("Images", "*.jpg *.jpeg *.png *.gif *.bmp *.webp *.jfif"),
+                ("All Supported", "*.jpeg;*.jpg;*.png;*.pdf;"),
+                ("Documents", "*.pdf;"),
             ]
         )
 
@@ -1153,7 +1152,6 @@ def open_cash_management(next_user_data):
                 })
 
         update_file_list()
-
     def remove_file(index):
         if 0 <= index < len(selected_files):
             selected_files.pop(index)

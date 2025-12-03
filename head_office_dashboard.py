@@ -9,7 +9,7 @@ from firebase_admin import firestore
 from Colors import COLORS
 from corporations import CORPORATIONS, DEPARTMENT_CONFIG
 
-ALLOWED_EXTENSIONS = ".pdf"
+ALLOWED_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".jfif")
 MAX_FILE_SIZE = 100 * 1024 * 1024
 
 

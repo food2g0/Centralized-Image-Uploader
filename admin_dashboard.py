@@ -935,7 +935,7 @@ def open_admin_dashboard_group3(admin_data):
 
         # Second row for date filters
         filter_row2 = tk.Frame(filter_frame, bg=COLORS['surface'])
-        filter_row2.pack(fill="x")
+        filter_row2.pack(fill="x", pady=(int(8 * font_scale), 0))
 
         try:
             from tkcalendar import DateEntry
@@ -948,14 +948,44 @@ def open_admin_dashboard_group3(admin_data):
                 bg=COLORS['surface']
             ).pack(side="left", padx=(0, int(5 * font_scale)))
             DateEntry = None
+            
+        # sort_var = tk.StringVar(value="Newest First")
+
+        # tk.Label(
+        #     filter_row2,
+        #     text="Sort:",
+        #     font=("Segoe UI", get_font_size(11), "bold"),
+        #     bg=COLORS['surface'],
+        #     fg=COLORS['text']
+        # ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
+
+        # sort_menu = tk.OptionMenu(filter_row2, sort_var, "Newest First", "Oldest First",
+        #                         command=lambda _: apply_filters())
+        # sort_menu.config(
+        #     font=("Segoe UI", get_font_size(10)),
+        #     bg=COLORS['surface'],
+        #     fg=COLORS['text'],
+        #     activebackground=COLORS['secondary'],
+        #     activeforeground='white',
+        #     bd=1,
+        #     relief="solid"
+        # )
+        # sort_menu["menu"].config(
+        #     font=("Segoe UI", get_font_size(10)),
+        #     bg=COLORS['surface'],
+        #     fg=COLORS['text'],
+        #     activebackground=COLORS['secondary']
+        # )
+        # sort_menu.pack(side="left", padx=(0, int(15 * font_scale)))    
 
         tk.Label(
-            filter_row2,
-            text="From:",
-            font=("Segoe UI", get_font_size(11), "bold"),
-            bg=COLORS['surface'],
-            fg=COLORS['text']
-        ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
+        filter_row2,
+        text="From:",
+        font=("Segoe UI", get_font_size(11), "bold"),
+        bg=COLORS['surface'],
+        fg=COLORS['text']
+    ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
+
 
         start_date_var = tk.StringVar()
         end_date_var = tk.StringVar()
@@ -1182,9 +1212,9 @@ def open_admin_dashboard_group3(admin_data):
 
             return True
 
-        # IMPROVED FILTER APPLICATION WITH DEBOUNCING
+
         def create_debounced_filter():
-            """Create a debounced filter function to prevent excessive calls"""
+           
             filter_timer = [None]
 
             def debounced_apply_filters(*args):
@@ -1281,6 +1311,120 @@ def open_admin_dashboard_group3(admin_data):
 
             messagebox.showinfo("Download Complete", f"Downloaded: {success}, Failed: {failed}")
 
+        # def display_images_page():
+        #     for widget in scroll_frame.winfo_children():
+        #         if widget != filter_frame:
+        #             widget.destroy()
+        #     image_refs.clear()
+
+        #     # Get sort preference
+        #     sort_order = sort_var.get()
+        #     is_newest_first = sort_order == "Newest First"
+
+        #     def get_date_for_sorting(img):
+               
+        #         date_str = img.get("date", "")
+        #         try:
+        #             return datetime.datetime.strptime(date_str.strip(), "%Y-%m-%d")
+        #         except:
+        #             return datetime.datetime.min
+            
+        #     # Sort based on user selection
+        #     sorted_images = sorted(filtered_images, key=get_date_for_sorting, reverse=is_newest_first)
+            
+        #     start = current_page[0] * images_per_page
+        #     end = start + images_per_page
+        #     page_images = sorted_images[start:end]
+        #     # Responsive search results info
+        #     if filename_search_var.get().strip() and filename_search_var.get().strip().lower() != "type filename here...":
+        #         search_info_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
+        #         search_info_frame.pack(fill="x", padx=int(20 * font_scale),
+        #                                pady=(int(5 * font_scale), int(8 * font_scale)),
+        #                                ipady=int(8 * font_scale))
+
+        #         search_query = filename_search_var.get().strip()
+        #         results_count = len(filtered_images)
+
+        #         tk.Label(
+        #             search_info_frame,
+        #             text=f"Search results for '{search_query}': {results_count} files found",
+        #             font=("Segoe UI", get_font_size(11), "bold"),
+        #             bg=COLORS['surface'],
+        #             fg=COLORS['secondary']
+        #         ).pack(padx=int(10 * font_scale), pady=int(5 * font_scale))
+                
+                
+
+        #     # Responsive select all
+        #     select_all_var = tk.BooleanVar(
+        #         value=all(img["doc_id"] in selected_images for img in page_images) and len(page_images) > 0)
+
+        #     def on_select_all():
+        #         if select_all_var.get():
+        #             for img in page_images:
+        #                 selected_images.add(img["doc_id"])
+        #         else:
+        #             for img in page_images:
+        #                 selected_images.discard(img["doc_id"])
+        #         update_selected_buttons()
+        #         display_images_page()
+
+        #     select_all_frame = tk.Frame(scroll_frame, bg=COLORS['surface'])
+        #     select_all_frame.pack(fill="x", padx=int(20 * font_scale), pady=(int(5 * font_scale), int(8 * font_scale)))
+
+        #     select_all_cb = tk.Checkbutton(
+        #         select_all_frame,
+        #         text="Select All (this page & filter)",
+        #         variable=select_all_var,
+        #         command=on_select_all,
+        #         bg=COLORS['surface'],
+        #         fg=COLORS['text'],
+        #         font=("Segoe UI", get_font_size(11), "bold"),
+        #         activebackground=COLORS['surface'],
+        #         activeforeground=COLORS['secondary'],
+        #         selectcolor=COLORS['secondary'],
+        #         bd=0,
+        #         highlightthickness=0
+        #     )
+        #     select_all_cb.pack(anchor="w", padx=int(10 * font_scale), pady=int(5 * font_scale))
+
+        #     if not page_images:
+        #         no_images_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
+        #         no_images_frame.pack(pady=int(30 * font_scale), padx=int(20 * font_scale), fill="x",
+        #                              ipady=int(30 * font_scale))
+
+        #         if filename_search_var.get().strip() and filename_search_var.get().strip().lower() != "type filename here...":
+        #             tk.Label(
+        #                 no_images_frame,
+        #                 text="No files match your search",
+        #                 font=("Segoe UI", get_font_size(16), "bold"),
+        #                 fg=COLORS['muted'],
+        #                 bg=COLORS['surface']
+        #             ).pack()
+        #             tk.Label(
+        #                 no_images_frame,
+        #                 text=f"No files found with filename containing: '{filename_search_var.get().strip()}'",
+        #                 font=("Segoe UI", get_font_size(12)),
+        #                 fg=COLORS['muted'],
+        #                 bg=COLORS['surface']
+        #             ).pack(pady=(int(5 * font_scale), 0))
+        #         else:
+        #             tk.Label(
+        #                 no_images_frame,
+        #                 text="No files found",
+        #                 font=("Segoe UI", get_font_size(16), "bold"),
+        #                 fg=COLORS['muted'],
+        #                 bg=COLORS['surface']
+        #             ).pack()
+        #             tk.Label(
+        #                 no_images_frame,
+        #                 text="Try adjusting your filters or select a different branch",
+        #                 font=("Segoe UI", get_font_size(12)),
+        #                 fg=COLORS['muted'],
+        #                 bg=COLORS['surface']
+        #             ).pack(pady=(int(5 * font_scale), 0))
+        #         return
+        
         def display_images_page():
             for widget in scroll_frame.winfo_children():
                 if widget != filter_frame:
@@ -1380,7 +1524,7 @@ def open_admin_dashboard_group3(admin_data):
                 return
 
             def view_full_file(file_data):
-                """Enhanced file viewer that handles different file types"""
+                
                 filename = file_data.get('filename', 'Unknown File')
                 file_url = file_data.get("file_url") or file_data.get("image_url")
 
@@ -1442,6 +1586,7 @@ def open_admin_dashboard_group3(admin_data):
                                 drag_data["y"] = event.y
 
                             def do_drag(event):
+                                
                                 dx = event.x - drag_data["x"]
                                 dy = event.y - drag_data["y"]
                                 canvas_popup.move("IMG", dx, dy)
@@ -1852,6 +1997,7 @@ def open_admin_dashboard_group3(admin_data):
         if 'start_date_picker' in locals():
             start_date_picker.bind("<<DateEntrySelected>>", apply_filters)
             end_date_picker.bind("<<DateEntrySelected>>", apply_filters)
+            
 
         # Responsive filter buttons
         tk.Button(
@@ -1867,6 +2013,7 @@ def open_admin_dashboard_group3(admin_data):
             pady=button_padding_y,
             command=apply_filters
         ).pack(side="left", padx=(0, int(5 * font_scale)))
+    
 
         tk.Button(
             filter_row2,
