@@ -4,13 +4,34 @@ import os
 import time
 import datetime
 from threading import Thread
-from firebase_config import storage, db
+from firebase_config import storage, db, update_head_office_index, get_head_office_custom_transactions
 from firebase_admin import firestore
 from Colors import COLORS
 from corporations import CORPORATIONS, DEPARTMENT_CONFIG
 
 ALLOWED_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".jfif")
 MAX_FILE_SIZE = 100 * 1024 * 1024
+
+# Professional UI Colors - Eye-friendly dark theme
+PRO_COLORS = {
+    'bg_dark': '#f8f9fa',          # Light background (almost white)
+    'bg_medium': '#eef2f7',        # Very light blue-gray background
+    'bg_light': '#e8ecf1',         # Light gray-blue
+    'accent': '#2563eb',           # Professional blue
+    'accent_hover': '#1d4ed8',     # Darker blue on hover
+    'success': '#16a34a',          # Professional green
+    'warning': '#d97706',          # Professional amber
+    'danger': '#dc2626',           # Professional red
+    'text_primary': '#0f172a',     # Dark text for readability
+    'text_secondary': '#475569',   # Gray text for secondary info
+    'card_bg': '#ffffff',          # Pure white cards
+    'border': '#e2e8f0',           # Light subtle border
+    'input_bg': '#f1f5f9',         # Light input background
+    'gradient_start': '#2563eb',   # Professional blue
+    'gradient_end': '#1d4ed8',     # Darker professional blue
+}
+
+VERSION = "1.1.6"
 
 
 class DepartmentTransactionManager:
@@ -23,8 +44,18 @@ class DepartmentTransactionManager:
 
     @staticmethod
     def get_transactions(department):
-        """Get transaction types for a specific department"""
-        return DEPARTMENT_CONFIG.get(department, {}).get("transactions", [])
+        """Get transaction types for a specific department (built-in + super admin custom)"""
+        built_in = DEPARTMENT_CONFIG.get(department, {}).get("transactions", [])
+        try:
+            custom = get_head_office_custom_transactions(department)
+        except Exception:
+            custom = []
+        # Merge, preserving order and avoiding duplicates
+        merged = list(built_in)
+        for t in custom:
+            if t not in merged:
+                merged.append(t)
+        return merged
 
     @staticmethod
     def get_sub_categories(department, transaction):
@@ -61,20 +92,28 @@ class DepartmentTransactionManager:
         return CORPORATIONS
 
 
-def create_modern_button(parent, text, command, bg_color, hover_color=None, width=None):
-    """Create a modern styled button with hover effects"""
+def create_modern_button(parent, text, command, bg_color, hover_color=None, width=None, size='normal'):
+    """Create a modern styled button with hover effects and shadow"""
+    font_size = 11 if size == 'large' else 10 if size == 'normal' else 9
+    pad_x = 25 if size == 'large' else 20 if size == 'normal' else 15
+    pad_y = 12 if size == 'large' else 8 if size == 'normal' else 6
+    
     button = tk.Button(
         parent,
         text=text,
         command=command,
         bg=bg_color,
         fg='white',
-        font=('Segoe UI', 10, 'bold'),
+        font=('Segoe UI', font_size, 'bold'),
         relief='flat',
         cursor='hand2',
-        padx=20,
-        pady=8,
-        width=width
+        padx=pad_x,
+        pady=pad_y,
+        width=width,
+        activebackground=hover_color if hover_color else bg_color,
+        activeforeground='white',
+        bd=0,
+        highlightthickness=0
     )
 
     if hover_color:
@@ -88,6 +127,27 @@ def create_modern_button(parent, text, command, bg_color, hover_color=None, widt
         button.bind("<Leave>", on_leave)
 
     return button
+
+
+def create_card_frame(parent, bg_color=None, padding=15):
+    """Create a modern card with subtle shadow effect"""
+    bg = bg_color if bg_color else PRO_COLORS['card_bg']
+    
+    # Outer frame for shadow effect
+    outer = tk.Frame(parent, bg=PRO_COLORS['bg_dark'], padx=2, pady=2)
+    
+    # Inner card
+    card = tk.Frame(
+        outer,
+        bg=bg,
+        relief='flat',
+        bd=0,
+        highlightbackground=PRO_COLORS['border'],
+        highlightthickness=1
+    )
+    card.pack(fill='both', expand=True, padx=padding, pady=padding)
+    
+    return outer, card
 
 
 def create_styled_frame(parent, bg_color=COLORS['white'], relief='flat', bd=1):
@@ -107,21 +167,21 @@ def format_file_size(size_bytes):
 
 def create_corporation_section_alternative(form_frame, corporation_var, all_corporations):
 
-    corp_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    corp_section = tk.Frame(form_frame, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
     corp_section.pack(fill='x', pady=(0, 15), padx=5)
 
     corp_label = tk.Label(
         corp_section,
         text="🏢 Corporation (Type to search)",
         font=('Segoe UI', 11, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_primary'],
         anchor='w'
     )
     corp_label.pack(fill='x', padx=15, pady=(15, 5))
 
     # Create frame for entry and listbox
-    search_frame = create_styled_frame(corp_section, COLORS['white'])
+    search_frame = tk.Frame(corp_section, bg=PRO_COLORS['card_bg'])
     search_frame.pack(fill='x', padx=15, pady=(0, 10))
 
     # Search entry
@@ -130,30 +190,38 @@ def create_corporation_section_alternative(form_frame, corporation_var, all_corp
         search_frame,
         textvariable=search_var,
         font=('Segoe UI', 10),
-        relief='solid',
-        bd=1
+        relief='flat',
+        bd=0,
+        bg=PRO_COLORS['input_bg'],
+        fg=PRO_COLORS['text_primary'],
+        insertbackground=PRO_COLORS['text_primary']
     )
-    search_entry.pack(fill='x', pady=(0, 5))
+    search_entry.pack(fill='x', pady=(0, 5), ipady=8)
 
     # Results listbox
-    results_frame = tk.Frame(search_frame, bg=COLORS['white'])
+    results_frame = tk.Frame(search_frame, bg=PRO_COLORS['input_bg'])
     results_listbox = tk.Listbox(
         results_frame,
         font=('Segoe UI', 9),
         height=6,
-        relief='solid',
-        bd=1
+        relief='flat',
+        bd=0,
+        bg=PRO_COLORS['input_bg'],
+        fg=PRO_COLORS['text_primary'],
+        selectbackground=PRO_COLORS['accent'],
+        selectforeground='white',
+        highlightthickness=0
     )
     scrollbar = tk.Scrollbar(results_frame, orient='vertical', command=results_listbox.yview)
     results_listbox.configure(yscrollcommand=scrollbar.set)
 
     # Selected corporation display
-    selected_frame = create_styled_frame(corp_section, COLORS['success'], relief='solid', bd=1)
+    selected_frame = tk.Frame(corp_section, bg=PRO_COLORS['success'])
     selected_label = tk.Label(
         selected_frame,
         text="No corporation selected",
         font=('Segoe UI', 10, 'bold'),
-        bg=COLORS['success'],
+        bg=PRO_COLORS['success'],
         fg='white',
         pady=8
     )
@@ -208,16 +276,18 @@ def create_corporation_section_alternative(form_frame, corporation_var, all_corp
         selected_frame.pack_forget()
         results_frame.pack_forget()
 
-    # Clear button
+    # Clear button (dark theme)
     clear_btn = tk.Button(
         corp_section,
         text="🗑️ Clear Selection",
         command=clear_selection,
-        bg=COLORS['warning'],
-        fg='white',
-        font=('Segoe UI', 8),
+        bg=PRO_COLORS['warning'],
+        fg='#000000',
+        font=('Segoe UI', 8, 'bold'),
         relief='flat',
-        cursor='hand2'
+        cursor='hand2',
+        padx=10,
+        pady=5
     )
     clear_btn.pack(padx=15, pady=(0, 15))
 
@@ -239,7 +309,21 @@ def open_head_office_dashboard(next_user_data):
 
 
     user_department = next_user_data.get('department', '')
+    user_role = next_user_data.get('role', '').lower()
     username = next_user_data.get('username', 'Unknown User')
+
+    # Debug: Print user info
+    print(f"[HEAD OFFICE] Username: {username}, Role: '{user_role}', Department: '{user_department}'")
+
+    # Check if user is Liaison-Compliance Department (restricted access)
+    # Support multiple variations: 'liaison-compliance department', 'liaison', or department containing 'Liaison'
+    is_liaison_compliance = (
+        user_role == 'liaison-compliance department' or
+        'liaison' in user_role or
+        user_department == 'Liaison-Compliance Department' or
+        'liaison' in user_department.lower()
+    )
+    print(f"[HEAD OFFICE] is_liaison_compliance: {is_liaison_compliance}")
 
     # Store selected files
     selected_files = []
@@ -295,8 +379,8 @@ def open_head_office_dashboard(next_user_data):
                 file_list_frame,
                 text="📂 No files selected\nClick 'Add Files' to select documents",
                 font=('Segoe UI', 10),
-                bg=COLORS['light'],
-                fg=COLORS['text_light'],
+                bg=PRO_COLORS['input_bg'],
+                fg=PRO_COLORS['text_secondary'],
                 justify='center'
             )
             no_files_label.pack(expand=True, fill='both', pady=20)
@@ -307,9 +391,9 @@ def open_head_office_dashboard(next_user_data):
         for widget in file_list_frame.winfo_children():
             widget.destroy()
 
-        canvas = tk.Canvas(file_list_frame, bg=COLORS['light'], highlightthickness=0, height=180)
+        canvas = tk.Canvas(file_list_frame, bg=PRO_COLORS['input_bg'], highlightthickness=0, height=180)
         scrollbar = ttk.Scrollbar(file_list_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas, bg=COLORS['light'])
+        scrollable_frame = tk.Frame(canvas, bg=PRO_COLORS['input_bg'])
 
         scrollable_frame.bind(
             "<Configure>",
@@ -326,16 +410,16 @@ def open_head_office_dashboard(next_user_data):
 
         # Add files to scrollable frame
         for i, file_info in enumerate(selected_files):
-            file_frame = create_styled_frame(scrollable_frame, COLORS['white'], relief='solid', bd=1)
+            file_frame = tk.Frame(scrollable_frame, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
             file_frame.pack(fill='x', padx=2, pady=2)
 
-            info_frame = create_styled_frame(file_frame, COLORS['white'])
+            info_frame = tk.Frame(file_frame, bg=PRO_COLORS['card_bg'])
             info_frame.pack(side='left', fill='both', expand=True, padx=8, pady=4)
 
-            status_color = COLORS['text'] if file_info['status'] == 'pending' else \
-                COLORS['success'] if file_info['status'] == 'uploaded' else \
-                    COLORS['warning'] if file_info['status'] == 'uploading' else \
-                        COLORS['danger']
+            status_color = PRO_COLORS['text_secondary'] if file_info['status'] == 'pending' else \
+                PRO_COLORS['success'] if file_info['status'] == 'uploaded' else \
+                    PRO_COLORS['warning'] if file_info['status'] == 'uploading' else \
+                        PRO_COLORS['danger']
 
             status_icon = "📄" if file_info['status'] == 'pending' else \
                 "✅" if file_info['status'] == 'uploaded' else \
@@ -350,7 +434,7 @@ def open_head_office_dashboard(next_user_data):
                 info_frame,
                 text=f"{status_icon} {display_name}",
                 font=('Segoe UI', 9, 'bold'),
-                bg=COLORS['white'],
+                bg=PRO_COLORS['card_bg'],
                 fg=status_color,
                 anchor='w'
             )
@@ -360,8 +444,8 @@ def open_head_office_dashboard(next_user_data):
                 info_frame,
                 text=f"{format_file_size(file_info['size'])} • {file_info['status'].title()}",
                 font=('Segoe UI', 8),
-                bg=COLORS['white'],
-                fg=COLORS['text_light'],
+                bg=PRO_COLORS['card_bg'],
+                fg=PRO_COLORS['text_secondary'],
                 anchor='w'
             )
             size_label.pack(fill='x')
@@ -371,7 +455,7 @@ def open_head_office_dashboard(next_user_data):
                     file_frame,
                     text="×",
                     command=lambda idx=i: remove_file(idx),
-                    bg=COLORS['danger'],
+                    bg=PRO_COLORS['danger'],
                     fg='white',
                     font=('Segoe UI', 10, 'bold'),
                     relief='flat',
@@ -533,6 +617,9 @@ def open_head_office_dashboard(next_user_data):
                             "timestamp": firestore.SERVER_TIMESTAMP,
                          
                         })
+                        
+                        # Update index for fast lookups
+                        update_head_office_index(user_department, final_transaction_type)
 
                         file_info['status'] = 'uploaded'
                         uploaded_files.append(file_info['name'])
@@ -586,35 +673,61 @@ def open_head_office_dashboard(next_user_data):
 
         Thread(target=do_upload).start()
 
-    # Create main window
+    # Create main window with professional styling
     popup = tk.Tk()
-    popup.title(f"📤 {user_department} - Document Upload")
-    popup.geometry("600x750")
-    popup.configure(bg=COLORS['light'])
-    popup.resizable(False, True)
-
-
-    popup.update_idletasks()
-
-
+    popup.title(f"📤 {user_department} - Document Upload | Head Office Portal v{VERSION}")
+    popup.configure(bg=PRO_COLORS['bg_dark'])
+    
+    # Enable resizing and fullscreen
+    popup.resizable(True, True)
+    popup.minsize(700, 600)
+    
+    # Get screen dimensions
     screen_width = popup.winfo_screenwidth()
     screen_height = popup.winfo_screenheight()
-
-    window_width = popup.winfo_width()
-    window_height = popup.winfo_height()
-
+    
+    # Set initial size (80% of screen)
+    window_width = min(1000, int(screen_width * 0.8))
+    window_height = min(900, int(screen_height * 0.9))
+    
+    # Center window
     x = (screen_width - window_width) // 2
-    y = max(10, (screen_height - window_height - 80) // 2)  # 80px buffer for taskbar
-
-    if y + window_height > screen_height - 60:
-        y = screen_height - window_height - 60
-
+    y = max(20, (screen_height - window_height) // 2 - 30)
+    
     popup.geometry(f"{window_width}x{window_height}+{x}+{y}")
-
-    max_height = screen_height - 100  # 100px buffer for taskbar and title bar
-    if window_height > max_height:
-        popup.geometry(f"500x{max_height}")
-        popup.resizable(False, True)  # Allow vertical resize if needed
+    
+    # Fullscreen toggle variables
+    is_fullscreen = [False]
+    
+    def toggle_fullscreen(event=None):
+        """Toggle fullscreen mode with F11"""
+        is_fullscreen[0] = not is_fullscreen[0]
+        popup.attributes('-fullscreen', is_fullscreen[0])
+        if is_fullscreen[0]:
+            fullscreen_btn.config(text="⬜ Exit Fullscreen")
+        else:
+            fullscreen_btn.config(text="⬛ Fullscreen")
+        return "break"
+    
+    def exit_fullscreen(event=None):
+        """Exit fullscreen with Escape"""
+        if is_fullscreen[0]:
+            is_fullscreen[0] = False
+            popup.attributes('-fullscreen', False)
+            fullscreen_btn.config(text="⬛ Fullscreen")
+        return "break"
+    
+    def maximize_window(event=None):
+        """Maximize/restore window"""
+        if popup.state() == 'zoomed':
+            popup.state('normal')
+        else:
+            popup.state('zoomed')
+    
+    # Bind keyboard shortcuts
+    popup.bind('<F11>', toggle_fullscreen)
+    popup.bind('<Escape>', exit_fullscreen)
+    popup.bind('<F10>', maximize_window)
 
     # Variables
     corporation_var = tk.StringVar()
@@ -623,76 +736,191 @@ def open_head_office_dashboard(next_user_data):
     uploaded_by_var = tk.StringVar()
     progress_var = tk.IntVar(value=0)
 
-    # Main container
-    main_frame = create_styled_frame(popup, COLORS['white'])
-    main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+    # Main container with dark theme
+    main_frame = tk.Frame(popup, bg=PRO_COLORS['bg_dark'])
+    main_frame.pack(fill='both', expand=True)
 
-    # Header
-    header_frame = create_styled_frame(main_frame, COLORS['primary'])
+    # Top toolbar with controls
+    toolbar_frame = tk.Frame(main_frame, bg=PRO_COLORS['bg_medium'], height=45)
+    toolbar_frame.pack(fill='x', side='top')
+    toolbar_frame.pack_propagate(False)
+    
+    # Left side - App title
+    title_frame = tk.Frame(toolbar_frame, bg=PRO_COLORS['bg_medium'])
+    title_frame.pack(side='left', padx=15, pady=8)
+    
+    tk.Label(
+        title_frame,
+        text=f"📤 HEAD OFFICE PORTAL",
+        font=('Segoe UI', 12, 'bold'),
+        bg=PRO_COLORS['bg_medium'],
+        fg=PRO_COLORS['text_primary']
+    ).pack(side='left')
+    
+    tk.Label(
+        title_frame,
+        text=f"  v{VERSION}",
+        font=('Segoe UI', 9),
+        bg=PRO_COLORS['bg_medium'],
+        fg=PRO_COLORS['text_secondary']
+    ).pack(side='left')
+    
+    # Right side - Window controls
+    controls_frame = tk.Frame(toolbar_frame, bg=PRO_COLORS['bg_medium'])
+    controls_frame.pack(side='right', padx=10, pady=8)
+    
+    fullscreen_btn = tk.Button(
+        controls_frame,
+        text="⬛ Fullscreen",
+        command=toggle_fullscreen,
+        bg=PRO_COLORS['bg_light'],
+        fg=PRO_COLORS['text_primary'],
+        font=('Segoe UI', 9),
+        relief='flat',
+        cursor='hand2',
+        padx=10,
+        pady=3,
+        bd=0
+    )
+    fullscreen_btn.pack(side='left', padx=5)
+    
+    # Help tooltip
+    tk.Label(
+        controls_frame,
+        text="F11: Fullscreen | ESC: Exit",
+        font=('Segoe UI', 8),
+        bg=PRO_COLORS['bg_medium'],
+        fg=PRO_COLORS['text_secondary']
+    ).pack(side='left', padx=(10, 0))
+
+    # Content area with responsive padding
+    content_area = tk.Frame(main_frame, bg=PRO_COLORS['bg_dark'])
+    content_area.pack(fill='both', expand=True, padx=25, pady=20)
+    
+    # Inner content wrapper with max-width for large screens
+    content_wrapper = tk.Frame(content_area, bg=PRO_COLORS['bg_dark'])
+    content_wrapper.pack(fill='both', expand=True)
+    
+    # Update padding dynamically based on window size
+    def update_content_padding(event=None):
+        current_width = popup.winfo_width()
+        if current_width > 1600:
+            side_padding = int((current_width - 1200) / 2)
+        elif current_width > 1200:
+            side_padding = int((current_width - 900) / 2)
+        else:
+            side_padding = 25
+        content_area.pack_configure(padx=max(25, side_padding))
+    
+    # Bind to window resize
+    popup.bind('<Configure>', update_content_padding)
+
+    # Header card
+    header_frame = tk.Frame(content_wrapper, bg=PRO_COLORS['accent'])
     header_frame.pack(fill='x', pady=(0, 20))
+    
+    # Gradient-like header with department info
+    header_inner = tk.Frame(header_frame, bg=PRO_COLORS['accent'])
+    header_inner.pack(fill='x', padx=3, pady=3)
 
     dept_icon = dept_manager.get_department_icon(user_department)
     header_label = tk.Label(
-        header_frame,
+        header_inner,
         text=f"{dept_icon} {user_department} - Document Upload",
-        font=('Segoe UI', 16, 'bold'),
-        bg=COLORS['primary'],
+        font=('Segoe UI', 18, 'bold'),
+        bg=PRO_COLORS['accent'],
         fg='white',
-        pady=15
+        pady=18
     )
     header_label.pack()
 
-    # User info display
-    user_info_frame = create_styled_frame(main_frame, COLORS['light'], relief='solid', bd=1)
-    user_info_frame.pack(fill='x', pady=(0, 15), padx=5)
+    # User info display card
+    user_info_frame = tk.Frame(content_wrapper, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
+    user_info_frame.pack(fill='x', pady=(0, 15))
 
+    user_info_inner = tk.Frame(user_info_frame, bg=PRO_COLORS['card_bg'])
+    user_info_inner.pack(fill='x', padx=15, pady=12)
+    
     tk.Label(
-        user_info_frame,
-        text=f"👤 User: {username} | 🏢 Department: {user_department}",
-        font=('Segoe UI', 10, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
-        pady=10
-    ).pack()
+        user_info_inner,
+        text=f"👤 {username}",
+        font=('Segoe UI', 11, 'bold'),
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_primary']
+    ).pack(side='left')
+    
+    tk.Label(
+        user_info_inner,
+        text="  |  ",
+        font=('Segoe UI', 11),
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_secondary']
+    ).pack(side='left')
+    
+    tk.Label(
+        user_info_inner,
+        text=f"🏢 {user_department}",
+        font=('Segoe UI', 11, 'bold'),
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['success']
+    ).pack(side='left')
+    
+    # Online status indicator
+    tk.Label(
+        user_info_inner,
+        text="● Online",
+        font=('Segoe UI', 9),
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['success']
+    ).pack(side='right')
 
-    # Form container with scrollable area
-    form_container = create_styled_frame(main_frame)
-    form_container.pack(fill='both', expand=True, padx=10)
+    # Form container with scrollable area (dark theme)
+    form_container = tk.Frame(content_wrapper, bg=PRO_COLORS['bg_dark'])
+    form_container.pack(fill='both', expand=True)
 
-    form_canvas = tk.Canvas(form_container, bg=COLORS['white'], highlightthickness=0)
+    form_canvas = tk.Canvas(form_container, bg=PRO_COLORS['bg_dark'], highlightthickness=0)
     form_scrollbar = ttk.Scrollbar(form_container, orient="vertical", command=form_canvas.yview)
-    form_frame = tk.Frame(form_canvas, bg=COLORS['white'])
+    form_frame = tk.Frame(form_canvas, bg=PRO_COLORS['bg_dark'])
 
-    form_frame.bind(
-        "<Configure>",
-        lambda e: form_canvas.configure(scrollregion=form_canvas.bbox("all"))
-    )
+    # Create window and store ID for resizing
+    canvas_window = form_canvas.create_window((0, 0), window=form_frame, anchor="nw")
 
-    form_canvas.create_window((0, 0), window=form_frame, anchor="nw")
+    def on_frame_configure(event):
+        form_canvas.configure(scrollregion=form_canvas.bbox("all"))
+
+    def on_canvas_configure(event):
+        # Make form_frame expand to fill canvas width
+        canvas_width = event.width
+        form_canvas.itemconfig(canvas_window, width=canvas_width)
+
+    form_frame.bind("<Configure>", on_frame_configure)
+    form_canvas.bind("<Configure>", on_canvas_configure)
+
     form_canvas.configure(yscrollcommand=form_scrollbar.set)
 
     def on_form_mousewheel(event):
         form_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
     form_canvas.bind("<MouseWheel>", on_form_mousewheel)
+    form_frame.bind("<MouseWheel>", on_form_mousewheel)
 
     form_canvas.pack(side="left", fill="both", expand=True)
     form_scrollbar.pack(side="right", fill="y")
 
-    # Corporation section - Using alternative search method
+    # Corporation section
     all_corporations = dept_manager.get_corporations()
     corp_section = create_corporation_section_alternative(form_frame, corporation_var, all_corporations)
 
-    # Transaction Type section
-    trans_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    # Transaction Type section (dark theme)
+    trans_section = tk.Frame(form_frame, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
     trans_section.pack(fill='x', pady=(0, 15), padx=5)
 
     trans_label = tk.Label(
         trans_section,
         text=f"📋 {user_department.replace(' Department', '')} Transaction Type",
         font=('Segoe UI', 11, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_primary'],
         anchor='w'
     )
     trans_label.pack(fill='x', padx=15, pady=(15, 5))
@@ -709,15 +937,15 @@ def open_head_office_dashboard(next_user_data):
     transaction_dropdown.pack(fill='x', padx=15, pady=(0, 15))
     transaction_dropdown.bind('<<ComboboxSelected>>', on_transaction_change)
 
-    # Sub-category section (initially hidden)
-    sub_category_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    # Sub-category section (initially hidden, dark theme)
+    sub_category_section = tk.Frame(form_frame, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
 
     sub_category_label = tk.Label(
         sub_category_section,
         text="📚 Sub-Category",
         font=('Segoe UI', 11, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_primary'],
         anchor='w'
     )
     sub_category_label.pack(fill='x', padx=15, pady=(15, 5))
@@ -731,16 +959,16 @@ def open_head_office_dashboard(next_user_data):
     )
     sub_category_dropdown.pack(fill='x', padx=15, pady=(0, 15))
 
-    # Uploaded By section
-    uploaded_by_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    # Uploaded By section (dark theme)
+    uploaded_by_section = tk.Frame(form_frame, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
     uploaded_by_section.pack(fill='x', pady=(0, 15), padx=5)
 
     tk.Label(
         uploaded_by_section,
         text="👤 Uploaded By",
         font=('Segoe UI', 11, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_primary'],
         anchor='w'
     ).pack(fill='x', padx=15, pady=(15, 5))
 
@@ -748,27 +976,28 @@ def open_head_office_dashboard(next_user_data):
         uploaded_by_section,
         textvariable=uploaded_by_var,
         font=('Segoe UI', 10),
-        relief='solid',
-        bd=1,
-        bg=COLORS['white'],
-        fg=COLORS['text']
+        relief='flat',
+        bd=0,
+        bg=PRO_COLORS['input_bg'],
+        fg=PRO_COLORS['text_primary'],
+        insertbackground=PRO_COLORS['text_primary']
     )
-    uploaded_by_entry.pack(fill='x', padx=15, pady=(0, 10))
+    uploaded_by_entry.pack(fill='x', padx=15, pady=(0, 10), ipady=8)
 
     # Add placeholder text functionality
     def on_focus_in(event):
         if uploaded_by_entry.get() == "Enter your name":
             uploaded_by_entry.delete(0, tk.END)
-            uploaded_by_entry.config(fg=COLORS['text'])
+            uploaded_by_entry.config(fg=PRO_COLORS['text_primary'])
 
     def on_focus_out(event):
         if uploaded_by_entry.get() == "":
             uploaded_by_entry.insert(0, "Enter your name")
-            uploaded_by_entry.config(fg=COLORS['text_light'])
+            uploaded_by_entry.config(fg=PRO_COLORS['text_secondary'])
 
     # Set initial placeholder
     uploaded_by_entry.insert(0, "Enter your name")
-    uploaded_by_entry.config(fg=COLORS['text_light'])
+    uploaded_by_entry.config(fg=PRO_COLORS['text_secondary'])
     uploaded_by_entry.bind('<FocusIn>', on_focus_in)
     uploaded_by_entry.bind('<FocusOut>', on_focus_out)
 
@@ -777,25 +1006,25 @@ def open_head_office_dashboard(next_user_data):
         uploaded_by_section,
         text="💡 Enter the name of the person uploading these documents",
         font=('Segoe UI', 8),
-        bg=COLORS['light'],
-        fg=COLORS['text_light'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_secondary'],
         anchor='w'
     )
     helper_label.pack(fill='x', padx=15, pady=(0, 15))
 
-    # File section
-    file_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    # File section (dark theme)
+    file_section = tk.Frame(form_frame, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
     file_section.pack(fill='x', pady=(0, 15), padx=5)
 
-    file_header_frame = create_styled_frame(file_section, COLORS['light'])
+    file_header_frame = tk.Frame(file_section, bg=PRO_COLORS['card_bg'])
     file_header_frame.pack(fill='x', padx=15, pady=(15, 5))
 
     tk.Label(
         file_header_frame,
         text="📎 Document Files",
         font=('Segoe UI', 11, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_primary'],
         anchor='w'
     ).pack(side='left')
 
@@ -803,22 +1032,22 @@ def open_head_office_dashboard(next_user_data):
         file_header_frame,
         text="0 files selected",
         font=('Segoe UI', 9),
-        bg=COLORS['light'],
-        fg=COLORS['text_light'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_secondary'],
         anchor='e'
     )
     files_info_label.pack(side='right')
 
-    # File management buttons
-    file_btn_frame = create_styled_frame(file_section, COLORS['light'])
+    # File management buttons (dark theme)
+    file_btn_frame = tk.Frame(file_section, bg=PRO_COLORS['card_bg'])
     file_btn_frame.pack(fill='x', padx=15, pady=(0, 10))
 
     add_files_btn = create_modern_button(
         file_btn_frame,
         "📁 Add Files",
         add_files,
-        COLORS['success'],
-        COLORS['success'],
+        PRO_COLORS['success'],
+        '#00f0b5',
         width=12
     )
     add_files_btn.pack(side='left')
@@ -827,40 +1056,41 @@ def open_head_office_dashboard(next_user_data):
         file_btn_frame,
         "🗑️ Clear All",
         clear_all_files,
-        COLORS['warning'],
+        PRO_COLORS['warning'],
+        '#ffd700',
         width=10
     )
     clear_btn.pack(side='left', padx=(10, 0))
 
-    # File list container
-    file_list_container = create_styled_frame(file_section, COLORS['light'])
+    # File list container (dark theme)
+    file_list_container = tk.Frame(file_section, bg=PRO_COLORS['input_bg'])
     file_list_container.pack(fill='x', padx=15, pady=(0, 10))
     file_list_container.configure(height=200)
 
-    file_list_frame = create_styled_frame(file_list_container, COLORS['light'])
+    file_list_frame = tk.Frame(file_list_container, bg=PRO_COLORS['input_bg'])
     file_list_frame.pack(fill='both', expand=True)
 
     # Supported formats info
     formats_label = tk.Label(
         file_section,
-        text="💡 Supported: PDF (Max 100MB per file)",
+        text="💡 Supported: PDF, JPG, PNG, GIF, BMP, WebP (Max 100MB per file)",
         font=('Segoe UI', 8),
-        bg=COLORS['light'],
-        fg=COLORS['text_light'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_secondary'],
         anchor='w'
     )
     formats_label.pack(fill='x', padx=15, pady=(0, 15))
 
-    # Progress section
-    progress_section = create_styled_frame(form_frame, COLORS['light'], relief='solid', bd=1)
+    # Progress section (dark theme)
+    progress_section = tk.Frame(form_frame, bg=PRO_COLORS['card_bg'], highlightbackground=PRO_COLORS['border'], highlightthickness=1)
     progress_section.pack(fill='x', pady=(0, 15), padx=5)
 
     tk.Label(
         progress_section,
         text="📊 Upload Progress",
         font=('Segoe UI', 11, 'bold'),
-        bg=COLORS['light'],
-        fg=COLORS['text'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['text_primary'],
         anchor='w'
     ).pack(fill='x', padx=15, pady=(15, 5))
 
@@ -868,33 +1098,142 @@ def open_head_office_dashboard(next_user_data):
         progress_section,
         variable=progress_var,
         maximum=100,
-        style='TProgressbar'
+        style='custom.Horizontal.TProgressbar'
     )
     progress_bar.pack(fill='x', padx=15, pady=(0, 10))
 
     status_label = tk.Label(
         progress_section,
-        text="Ready to upload",
+        text="● Ready to upload",
         font=('Segoe UI', 9),
-        bg=COLORS['light'],
-        fg=COLORS['text_light'],
+        bg=PRO_COLORS['card_bg'],
+        fg=PRO_COLORS['success'],
         anchor='w'
     )
     status_label.pack(fill='x', padx=15, pady=(0, 15))
 
-    # Button section
-    button_frame = create_styled_frame(main_frame)
+    # Button section (dark theme)
+    button_frame = tk.Frame(content_wrapper, bg=PRO_COLORS['bg_dark'])
     button_frame.pack(fill='x', pady=(20, 0))
 
     upload_btn = create_modern_button(
         button_frame,
         "🚀 Upload All Files",
         upload_files,
-        COLORS['primary'],
-        COLORS['primary_hover'],
-        width=18
+        PRO_COLORS['accent'],
+        PRO_COLORS['accent_hover'],
+        width=20,
+        size='large'
     )
-    upload_btn.pack(side='left', padx=(0, 10))
+    upload_btn.pack(side='left', padx=(0, 15))
+
+    def view_branch_kyc():
+        """View KYC uploads from branches (Liaison-Compliance feature)"""
+        try:
+            # Create a modified admin_data for viewing branches
+            branch_view_data = {
+                'username': username,
+                'department': user_department,
+                'role': 'liaison-compliance',
+                'view_mode': 'kyc_only'  # Flag to filter for KYC only
+            }
+
+            # Show group selection to view branches from specific group
+            show_branch_selection_for_liaison(branch_view_data, popup)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open branch KYC uploads: {e}")
+
+    def show_branch_selection_for_liaison(liaison_data, parent_window):
+        """Show group selection for Liaison-Compliance to view branch KYC"""
+        from corporations import group1_corporations, group2_corporations, group3_corporations
+
+        selection_window = tk.Toplevel(parent_window)
+        selection_window.title("Select Group - View Branch KYC")
+        selection_window.geometry("500x400")
+        selection_window.resizable(False, False)
+
+        # Header
+        header_frame = tk.Frame(selection_window, bg="#0f172a", height=120)
+        header_frame.pack(fill="x", padx=0, pady=0)
+        header_frame.pack_propagate(False)
+
+        tk.Label(
+            header_frame,
+            text="View Branch KYC Forms",
+            font=("Arial", 20, "bold"),
+            bg="#0f172a",
+            fg="white"
+        ).pack(pady=(15, 5))
+
+        tk.Label(
+            header_frame,
+            text="Select a group to view KYC forms from branches",
+            font=("Arial", 10),
+            bg="#0f172a",
+            fg="#cbd5e1"
+        ).pack(pady=(0, 15))
+
+        # Content
+        content_frame = tk.Frame(selection_window, bg="#f8fafc")
+        content_frame.pack(fill="both", expand=True, padx=30, pady=30)
+
+        groups_data = [
+            ("Group 1", "group 1", group1_corporations, "📊"),
+            ("Group 2", "group 2", group2_corporations, "📈"),
+            ("Group 3", "group 3", group3_corporations, "📉")
+        ]
+
+        def select_group_for_kyc(group_name, corporations):
+            selection_window.destroy()
+            try:
+                from shared_admin_dashboard import create_admin_dashboard
+
+                # Create admin data with KYC filter flag
+                modified_data = liaison_data.copy()
+                modified_data['group'] = group_name
+
+                create_admin_dashboard(
+                    admin_data=modified_data,
+                    group_corporations=corporations,
+                    add_user_popup_func=lambda x: None,  # Liaison can't add users
+                    group_name_display=f"{group_name} - Liaison View",
+                    filter_transaction_type=['KYC Individual Records', 'Palawan Payout', 'Palawan Pay In', 'Palawan Sendout', 'Money Changer Buy', 'Money Changer Sell', 'Jewelry Renew', 'Jewelry New', 'Jewelry Redeem'],
+                    switch_group_callback=None
+                )
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to open group dashboard: {e}")
+
+        for display_name, group_value, corporations, icon in groups_data:
+            btn_frame = tk.Frame(content_frame, bg="white", relief="solid", bd=1)
+            btn_frame.pack(fill="x", pady=10)
+
+            btn = tk.Button(
+                btn_frame,
+                text=f"{icon}  {display_name}",
+                font=("Arial", 12, "bold"),
+                bg="#2563eb",
+                fg="white",
+                height=2,
+                relief="flat",
+                cursor="hand2",
+                command=lambda g=group_value, c=corporations: select_group_for_kyc(g, c),
+                activebackground="#1d4ed8",
+                activeforeground="white"
+            )
+            btn.pack(fill="both", expand=True, padx=0, pady=0)
+
+    # Add "View Branch KYC" button for Liaison-Compliance Department users
+    if is_liaison_compliance:
+        view_btn = create_modern_button(
+            button_frame,
+            "👁️ View Branch KYC",
+            view_branch_kyc,
+            PRO_COLORS['success'],
+            '#34d399',
+            width=15,
+            size='normal'
+        )
+        view_btn.pack(side='left', padx=(0, 15))
 
     def logout_and_exit():
         if messagebox.askyesno("Logout", "Are you sure you want to logout?"):
@@ -909,14 +1248,42 @@ def open_head_office_dashboard(next_user_data):
         button_frame,
         "🚪 Logout",
         logout_and_exit,
-        COLORS['danger'],
-        width=12
+        PRO_COLORS['danger'],
+        '#ff4757',
+        width=12,
+        size='normal'
     )
     logout_btn.pack(side='right')
 
-    # Configure ttk styles
+    # Configure ttk styles for dark theme
     style = ttk.Style()
-    style.configure('TProgressbar', thickness=20)
+    style.theme_use('clam')
+    
+    # Custom progress bar style
+    style.configure(
+        'custom.Horizontal.TProgressbar',
+        troughcolor=PRO_COLORS['input_bg'],
+        background=PRO_COLORS['accent'],
+        thickness=25,
+        borderwidth=0
+    )
+    
+    # Custom scrollbar style
+    style.configure(
+        'TScrollbar',
+        background=PRO_COLORS['bg_light'],
+        troughcolor=PRO_COLORS['bg_dark'],
+        borderwidth=0
+    )
+    
+    # Custom combobox style
+    style.configure(
+        'TCombobox',
+        fieldbackground=PRO_COLORS['input_bg'],
+        background=PRO_COLORS['bg_light'],
+        foreground=PRO_COLORS['text_primary'],
+        arrowcolor=PRO_COLORS['text_primary']
+    )
 
     # Initialize file list
     update_file_list()

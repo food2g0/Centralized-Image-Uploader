@@ -190,7 +190,9 @@ DEPARTMENT_CONFIG = {
             "PERMITS",
             "STB",
             "MTPP",
-            "Palawan Contract"
+            "Palawan Contract",
+            "Compliance Memorandums",
+            "Electronic copy of CTR and STR submitted to AMLC",
         ]
     },
     "Operation Department": {

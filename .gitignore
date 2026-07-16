@@ -1,1 +1,52 @@
+# Credentials and Sensitive Files
 serviceAccountKey.json
+saved_credentials.txt
+*.env
+.env.local
+.env.*.local
+
+# Build and Distribution
+dist/
+build/
+output/
+*.exe
+*.spec
+*.whl
+*.egg-info/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+*.lnk
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+updater.ini
+updater.log
+last_update_check.txt
+
+# Project specific
+*.pyo
+firebase_config.pyc
+main.spec

@@ -11,8 +11,8 @@ from Colors import COLORS
 from corporations import CORPORATIONS, DEPARTMENT_CONFIG
 
 # Version information
-VERSION = "1.1.3"
-VERSION_DATE = "2025-12-03"
+VERSION = "1.1.5"
+VERSION_DATE = "2026-03-05"
 
 ALLOWED_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".jfif")
 MAX_FILE_SIZE = 100 * 1024 * 1024

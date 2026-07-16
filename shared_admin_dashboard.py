@@ -1,50 +1,26 @@
-"""
-Admin Dashboard Group 3
-========================
-This file uses the shared_admin_dashboard module.
-All changes should be made in shared_admin_dashboard.py
-"""
-from shared_admin_dashboard import create_admin_dashboard
-from corporations import group3_corporations
-from add_user import open_add_user_popup_group3
 
 
-def open_admin_dashboard_group3(admin_data, switch_group_callback=None):
-    """Open admin dashboard for Group 3 using shared module"""
-    create_admin_dashboard(
-        admin_data=admin_data,
-        group_corporations=group3_corporations,
-        add_user_popup_func=open_add_user_popup_group3,
-        group_name_display="Group 3",
-        switch_group_callback=switch_group_callback
-    )
+def create_admin_dashboard(admin_data, group_corporations, add_user_popup_func, group_name_display, switch_group_callback=None, filter_transaction_type=None):
 
-
-# ============================================================
-# OLD CODE BACKUP (can be deleted after confirming shared module works)
-# ============================================================
-def _old_open_admin_dashboard_group3(admin_data):
     import tkinter as tk
     from tkinter import messagebox, filedialog, ttk
     from firebase_config import db, bucket, get_branches_from_index, decrement_branch_index
     from PIL import Image, ImageTk
     import requests
-    from add_user import open_add_user_popup_group3
     from io import BytesIO
     import time
     import datetime
     from head_office_popup import open_head_office_popup
     from head_office_images import open_head_office_images
     from Colors import COLORS
-    from corporations import group3_corporations
     from notification_system import NotificationSystem
     import threading
     from typing import Dict, List, Optional, Tuple, Any
+
     VERSION = "1.1.6"
     
     # Threading lock for safe UI updates
     ui_lock = threading.Lock()
-
     class OptimizedFirestoreManager:
 
 
@@ -54,9 +30,8 @@ def _old_open_admin_dashboard_group3(admin_data):
             self.cache = {}
             self.cache_timeout = 1800  # 30 minutes cache for heavy queries
             self.page_size = 25
-            self.max_branch_discovery = 100  # Strict limit for branch discovery
+            self.max_branch_discovery = 100
 
-            # Create composite indexes programmatically (you'll need to add these in Firebase Console)
             self.required_indexes = [
                 # For branch queries with filters
                 ("branch", "timestamp"),
@@ -431,34 +406,35 @@ def _old_open_admin_dashboard_group3(admin_data):
                 return [], None, False
 
         def optimized_search(search_term, context):
-            """Optimized search function"""
+
             if not search_term.strip():
                 return app_state.current_data
 
             return optimizer.search_documents_optimized(search_term, context)
 
         def bulk_delete_optimized(selected_doc_ids):
-            """Optimized bulk delete operation"""
+
             operations = [{"type": "delete", "doc_id": doc_id} for doc_id in selected_doc_ids]
 
             return optimizer.bulk_operation_optimized(operations)
 
-        # Periodic cache cleanup
+
         def schedule_cache_cleanup():
-            """Schedule periodic cache cleanup"""
+
             optimizer.clear_cache_smart()
-            # Schedule next cleanup in 10 minutes
+
             admin.after(600000, schedule_cache_cleanup)
 
-        # Start cache cleanup scheduler
-        admin.after(600000, schedule_cache_cleanup)  # Start after 10 minutes
+
+        admin.after(600000, schedule_cache_cleanup)
 
         return optimizer, app_state, load_page_data, optimized_search, bulk_delete_optimized
 
     admin = tk.Tk()
+
     admin.title(f"Admin Dashboard - Record Management System v{VERSION}")
     admin.state('zoomed')
-    admin.configure(bg="#f8fafc")
+    admin.configure(bg=COLORS['background'])
 
     screen_width = admin.winfo_screenwidth()
     screen_height = admin.winfo_screenheight()
@@ -473,22 +449,30 @@ def _old_open_admin_dashboard_group3(admin_data):
     scale_factor = min(screen_width / 1920, screen_height / 1080)
     font_scale = max(0.8, min(1.2, scale_factor))
 
-    sidebar_width = max(250, min(350, int(screen_width * 0.2)))
+    sidebar_width = max(280, min(380, int(screen_width * 0.22)))
 
     # Responsive font sizes
     def get_font_size(base_size):
         return max(8, int(base_size * font_scale))
 
-    # Initialize notification system
+
     notification_system = NotificationSystem(admin, admin_data)
 
-    # Initialize global variables early to prevent NameError
+
     current_loaded_data = []
     current_context = {"type": None, "value": None}
     image_refs = []
     branches = set()
+    
+    # Pagination state for "Load More" functionality
+    pagination_state = {
+        "last_doc": None,
+        "has_more": False,
+        "page_size": 500,
+        "total_loaded": 0
+    }
 
-    # Responsive ttk styles
+
     style = ttk.Style()
     style.theme_use('clam')
 
@@ -503,9 +487,9 @@ def _old_open_admin_dashboard_group3(admin_data):
     style.map('Modern.TButton',
               background=[('active', '#2563eb'), ('pressed', '#1d4ed8')])
 
-    # Function to determine file type and return appropriate default icon
+
     def get_file_icon(filename):
-        """Return appropriate icon/text based on file extension"""
+
         if not filename:
             return "📄", "Unknown File"
 
@@ -523,55 +507,74 @@ def _old_open_admin_dashboard_group3(admin_data):
         else:
             return "📄", "Document"
 
-    # Create default image function
+
     def create_default_image(icon, file_type, size=(200, 200)):
         """Create a default image with icon and file type text"""
         # Create a simple colored background image
         img = Image.new('RGB', size, color='#f1f5f9')
         return img
 
-    # Responsive sidebar
-    sidebar = tk.Frame(admin, width=sidebar_width, bg=COLORS['sidebar'], relief="flat")
-    sidebar.pack(side="left", fill="y")
+
+    # Professional Sidebar with depth effect
+    sidebar_outer = tk.Frame(admin, bg='#0a0f1a', width=sidebar_width + 4)
+    sidebar_outer.pack(side="left", fill="y")
+    sidebar_outer.pack_propagate(False)
+    
+    sidebar = tk.Frame(sidebar_outer, width=sidebar_width, bg=COLORS['sidebar'], relief="flat")
+    sidebar.pack(side="left", fill="both", expand=True)
     sidebar.pack_propagate(False)
 
-    # Responsive hamburger button
-    hamburger_btn = tk.Button(
-        admin,
-        text="☰",
-        font=("Segoe UI", get_font_size(16), "bold"),
-        bg=COLORS['sidebar'],
-        fg="white",
-        bd=0,
-        relief="flat",
-        width=3,
-        height=2,
-        state="disabled"
-    )
-    hamburger_btn.place(x=8, y=8)
+    # Remove hamburger button (cleaner look)
+    # hamburger_btn = tk.Button(...)
 
     # Main content area with responsive padding
     responsive_padding = max(10, int(20 * font_scale))
     main_frame = tk.Frame(admin, bg=COLORS['background'])
     main_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=responsive_padding, pady=responsive_padding)
 
-    # Responsive header with refresh and notification buttons
-    header_frame = tk.Frame(main_frame, bg=COLORS['surface'], relief="flat", bd=1)
-    header_frame.pack(fill="x", pady=(0, responsive_padding), ipady=int(15 * font_scale))
 
-    # Title section
+    # Professional Header with subtle shadow effect
+    header_shadow = tk.Frame(main_frame, bg='#e2e8f0', height=3)
+    header_shadow.pack(fill="x", pady=(0, 0))
+    
+    header_frame = tk.Frame(main_frame, bg=COLORS['surface'], relief="flat", bd=0)
+    header_frame.pack(fill="x", pady=(0, responsive_padding), ipady=int(18 * font_scale))
+
+    # Left side - Title with icon
     title_frame = tk.Frame(header_frame, bg=COLORS['surface'])
-    title_frame.pack(side="left", fill="both", expand=True)
+    title_frame.pack(side="left", fill="both", expand=True, padx=(int(25 * font_scale), 0))
+
+    # App icon and title row
+    title_row = tk.Frame(title_frame, bg=COLORS['surface'])
+    title_row.pack(anchor="w", pady=(int(8 * font_scale), 0))
+    
+    tk.Label(
+        title_row,
+        text="📊",
+        font=("Segoe UI", get_font_size(24)),
+        bg=COLORS['surface'],
+        fg=COLORS['primary']
+    ).pack(side="left", padx=(0, int(10 * font_scale)))
 
     tk.Label(
-        title_frame,
+        title_row,
         text="Record Management System",
-        font=("Segoe UI", get_font_size(20), "bold"),
+        font=("Segoe UI", get_font_size(22), "bold"),
         bg=COLORS['surface'],
         fg=COLORS['text']
-    ).pack(pady=int(10 * font_scale))
+    ).pack(side="left")
+    
+    # Subtitle with Group Name
+    subtitle_text = f"Welcome back, {admin_data.get('name', 'Admin')} • {group_name_display}"
+    tk.Label(
+        title_frame,
+        text=subtitle_text,
+        font=("Segoe UI", get_font_size(12), "bold"),
+        bg=COLORS['surface'],
+        fg=COLORS['accent']
+    ).pack(anchor="w", pady=(int(4 * font_scale), 0))
 
-    # Buttons frame in top right (now contains both refresh and notification buttons)
+
     buttons_frame = tk.Frame(header_frame, bg=COLORS['surface'])
     buttons_frame.pack(side="right", padx=int(20 * font_scale), pady=int(10 * font_scale))
 
@@ -583,7 +586,7 @@ def _old_open_admin_dashboard_group3(admin_data):
     viewer_frame.pack(side="left", fill=tk.BOTH, expand=True, padx=(0, int(10 * font_scale)))
     viewer_frame.pack_propagate(False)
 
-    # Responsive canvas with scrollbar
+
     canvas = tk.Canvas(viewer_frame, bg=COLORS['surface'], highlightthickness=0, bd=0)
 
     scrollbar_width = max(12, int(16 * font_scale))
@@ -615,11 +618,11 @@ def _old_open_admin_dashboard_group3(admin_data):
     canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux wheel up
     canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux wheel down
 
-    # Also bind to the scroll_frame and main elements for better coverage
+
     scroll_frame.bind("<MouseWheel>", _on_mousewheel)
     main_frame.bind("<MouseWheel>", _on_mousewheel)
 
-    # Make sure the canvas can receive focus for mouse events
+
     canvas.focus_set()
 
     def bind_mousewheel_to_main_widgets(widget, visited=None, depth=0):
@@ -627,8 +630,8 @@ def _old_open_admin_dashboard_group3(admin_data):
         if visited is None:
             visited = set()
 
-        # Prevent infinite recursion with depth limit
-        if depth > 50:  # Reasonable maximum depth
+
+        if depth > 50:  #
             return
 
         # Prevent cycles
@@ -638,16 +641,16 @@ def _old_open_admin_dashboard_group3(admin_data):
         visited.add(widget_id)
 
         try:
-            # Only bind if widget still exists and is valid
+
             if widget.winfo_exists():
                 widget.bind("<MouseWheel>", _on_mousewheel)
                 widget.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
                 widget.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
         except (tk.TclError, RuntimeError, AttributeError):
-            # Widget is destroyed or invalid, skip it
+
             return
 
-        # Recursively bind children with depth tracking
+
         try:
             children = widget.winfo_children()
             for child in children:
@@ -656,22 +659,21 @@ def _old_open_admin_dashboard_group3(admin_data):
             # Widget or children are destroyed, skip
             pass
 
-    # OPTIMIZED FIREBASE DATA LOADING - ON-DEMAND APPROACH
+
 
     def load_branches_only():
         """Load unique branches using Branches_Index for FAST loading"""
         try:
             # Use the optimized Branches_Index collection
-            # This is much faster than scanning all Uploaded_Images
-            branches_list = get_branches_from_index(list(group3_corporations))
+            branches_list = get_branches_from_index(list(group_corporations))
             
             if branches_list:
                 print(f"✅ Loaded {len(branches_list)} branches from Branches_Index")
                 return branches_list
             
-            # Fallback to old method if index is empty (first run before migration)
+            # Fallback to old method if index is empty
             print("⚠️ Branches_Index empty, falling back to full scan...")
-            docs = db.collection("Uploaded_Images").where("corporations", "in", list(group3_corporations)[:10]).select(["branch"]).limit(500).stream()
+            docs = db.collection("Uploaded_Images").where("corporations", "in", list(group_corporations)[:10]).select(["branch"]).limit(500).stream()
 
             branches_set = set()
             for doc in docs:
@@ -687,10 +689,9 @@ def _old_open_admin_dashboard_group3(admin_data):
             messagebox.showerror("Error", f"Failed to load branches: {e}")
             return []
 
-    def load_branch_data(branch_name, page_size=50, last_doc=None):
+    def load_branch_data(branch_name, page_size=500, last_doc=None):
         """Load branch data with pagination for better performance"""
         try:
-            # Build query with pagination
             query = db.collection("Uploaded_Images").where("branch", "==", branch_name).order_by("timestamp", direction="DESCENDING")
             
             if last_doc:
@@ -706,7 +707,7 @@ def _old_open_admin_dashboard_group3(admin_data):
                 data = doc.to_dict()
                 if data:
                     data["doc_id"] = doc.id
-                    data["_doc_snapshot"] = doc  # Store for pagination
+                    data["_doc_snapshot"] = doc
                     branch_data.append(data)
                     last_document = doc
 
@@ -717,12 +718,11 @@ def _old_open_admin_dashboard_group3(admin_data):
             messagebox.showerror("Error", f"Failed to load branch data for '{branch_name}': {e}")
             return [], None, False
 
-    def load_branch_data_threaded(branch_name, callback, page_size=50):
+    def load_branch_data_threaded(branch_name, callback, page_size=500):
         """Load branch data in background thread to keep UI responsive"""
         def _load():
             try:
                 data, last_doc, has_more = load_branch_data(branch_name, page_size)
-                # Schedule callback on main thread
                 admin.after(0, lambda: callback(data, last_doc, has_more))
             except Exception as e:
                 admin.after(0, lambda: messagebox.showerror("Error", f"Failed to load data: {e}"))
@@ -731,10 +731,9 @@ def _old_open_admin_dashboard_group3(admin_data):
         thread.start()
         return thread
 
-    def load_corporation_data(corporation_name, page_size=50, last_doc=None):
+    def load_corporation_data(corporation_name, page_size=500, last_doc=None):
         """Load data for a specific corporation with pagination"""
         try:
-            # Build query with pagination
             query = db.collection("Uploaded_Images").where("corporations", "==", corporation_name).order_by("timestamp", direction="DESCENDING")
             
             if last_doc:
@@ -761,7 +760,7 @@ def _old_open_admin_dashboard_group3(admin_data):
             messagebox.showerror("Error", f"Failed to load corporation data for '{corporation_name}': {e}")
             return [], None, False
 
-    def load_corporation_data_threaded(corporation_name, callback, page_size=50):
+    def load_corporation_data_threaded(corporation_name, callback, page_size=500):
         """Load corporation data in background thread"""
         def _load():
             try:
@@ -778,9 +777,9 @@ def _old_open_admin_dashboard_group3(admin_data):
     available_branches = load_branches_only()
     branches.update(available_branches)
 
-    # IMPROVED REFRESH FUNCTION WITH ON-DEMAND LOADING
+
     def refresh_data():
-        """Enhanced refresh with on-demand loading"""
+
         current_time = time.time()
 
         # Prevent rapid successive calls
@@ -822,40 +821,83 @@ def _old_open_admin_dashboard_group3(admin_data):
         """Show notifications - placeholder function"""
         notification_system.open_notifications()
 
-    # Create notification button (beside refresh button)
-    notification_btn = tk.Button(
-        buttons_frame,
-        text="🔔 Notifications",
-        font=("Segoe UI", get_font_size(11), "bold"),
-        bg=COLORS['accent'],
-        fg="white",
-        bd=0,
-        relief="flat",
-        cursor="hand2",
-        padx=int(20 * font_scale),
-        pady=int(8 * font_scale),
-        command=show_notifications
-    )
-    notification_btn.pack(side="left", padx=(0, int(10 * font_scale)))
+    # Modern button styling helper
+    def create_modern_button(parent, text, bg_color, command, icon=""):
+        """Create a modern styled button with hover effects"""
+        btn = tk.Button(
+            parent,
+            text=f"{icon} {text}" if icon else text,
+            font=("Segoe UI", get_font_size(10), "bold"),
+            bg=bg_color,
+            fg="white",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            padx=int(18 * font_scale),
+            pady=int(10 * font_scale),
+            activebackground=bg_color,
+            activeforeground="white",
+            command=command
+        )
+        
+        # Hover effects
+        original_bg = bg_color
+        def darken_color(hex_color):
+            # Simple darkening
+            r = max(0, int(hex_color[1:3], 16) - 20)
+            g = max(0, int(hex_color[3:5], 16) - 20)
+            b = max(0, int(hex_color[5:7], 16) - 20)
+            return f'#{r:02x}{g:02x}{b:02x}'
+        
+        hover_bg = darken_color(bg_color)
+        
+        def on_enter(e):
+            btn.config(bg=hover_bg)
+        def on_leave(e):
+            btn.config(bg=original_bg)
+        
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        
+        return btn
 
-    # Create refresh button
-    refresh_btn = tk.Button(
-        buttons_frame,
-        text="🔄 Refresh",
-        font=("Segoe UI", get_font_size(11), "bold"),
-        bg=COLORS['secondary'],
-        fg="white",
-        bd=0,
-        relief="flat",
-        cursor="hand2",
-        padx=int(20 * font_scale),
-        pady=int(8 * font_scale),
-        command=refresh_data
+    # Create notification button (modern style)
+    notification_btn = create_modern_button(
+        buttons_frame, "Notifications", COLORS['accent'], show_notifications, "🔔"
+    )
+    notification_btn.pack(side="left", padx=(0, int(8 * font_scale)))
+
+    # Create refresh button (modern style)
+    refresh_btn = create_modern_button(
+        buttons_frame, "Refresh", COLORS['primary'], refresh_data, "🔄"
     )
     refresh_btn.pack(side="left")
 
+    # Create switch group button if callback is provided (for supervisor/liaison accounts)
+    if switch_group_callback:
+        def switch_group():
+            admin.destroy()
+            switch_group_callback()
+
+        switch_group_btn = create_modern_button(
+            buttons_frame, "Switch Group", COLORS['secondary'], switch_group, "🔀"
+        )
+        switch_group_btn.pack(side="left", padx=(int(8 * font_scale), 0))
+    # Add switch group button for Liaison-Compliance users (without callback, they have their own handler)
+    elif filter_transaction_type and admin_data.get('role', '').lower() == 'liaison-compliance':
+        def switch_liaison_group():
+            admin.destroy()
+            # This will trigger the group selection dialog again in head_office_dashboard
+            from head_office_dashboard import show_branch_selection_for_liaison
+            show_branch_selection_for_liaison(admin_data, admin)
+
+        switch_group_btn = create_modern_button(
+            buttons_frame, "Switch Group", COLORS['secondary'], switch_liaison_group, "🔀"
+        )
+        switch_group_btn.pack(side="left", padx=(int(8 * font_scale), 0))
+
     def show_images(branch=None, corporation=None, force_reload=False):
-        global current_loaded_data, current_context
+        global current_loaded_data, current_context, pagination_state
 
         # Ensure variables are properly initialized
         try:
@@ -864,6 +906,7 @@ def _old_open_admin_dashboard_group3(admin_data):
         except (NameError, AttributeError):
             current_loaded_data = []
             current_context = {"type": None, "value": None}
+            pagination_state = {"last_doc": None, "has_more": False, "page_size": 500, "total_loaded": 0}
 
         # Determine what data we need
         if corporation:
@@ -901,108 +944,142 @@ def _old_open_admin_dashboard_group3(admin_data):
             # Update UI to show loading
             admin.update_idletasks()
 
-            # Define callback to handle loaded data
-            def on_data_loaded(data, last_doc, has_more):
-                global current_loaded_data, current_context
-                current_loaded_data = data
-                current_context = {"type": context_key[0], "value": context_key[1], "last_doc": last_doc, "has_more": has_more}
-                
-                # Remove loading indicator if it still exists
-                try:
-                    loading_frame.destroy()
-                except:
-                    pass
-                
-                # Display the loaded data
-                display_loaded_images(data, context_key, has_more)
-
-            # Load data based on selection using threaded loading
+            # Load data based on selection (functions now return tuple: data, last_doc, has_more)
             if corporation:
-                load_corporation_data_threaded(corporation, on_data_loaded)
+                data_result = load_corporation_data(corporation, page_size=pagination_state["page_size"])
+                if isinstance(data_result, tuple):
+                    current_loaded_data = data_result[0]
+                    pagination_state["last_doc"] = data_result[1]
+                    pagination_state["has_more"] = data_result[2]
+                else:
+                    current_loaded_data = data_result
+                    pagination_state["last_doc"] = None
+                    pagination_state["has_more"] = False
             elif branch:
-                load_branch_data_threaded(branch, on_data_loaded)
-            return  # Return early, callback will handle display
+                data_result = load_branch_data(branch, page_size=pagination_state["page_size"])
+                if isinstance(data_result, tuple):
+                    current_loaded_data = data_result[0]
+                    pagination_state["last_doc"] = data_result[1]
+                    pagination_state["has_more"] = data_result[2]
+                else:
+                    current_loaded_data = data_result
+                    pagination_state["last_doc"] = None
+                    pagination_state["has_more"] = False
+            
+            pagination_state["total_loaded"] = len(current_loaded_data)
 
-        # If no reload needed, just display existing data
-        display_loaded_images(current_loaded_data, context_key, current_context.get("has_more", False))
+            # Update current context
+            current_context = {"type": context_key[0], "value": context_key[1]}
 
-    def display_loaded_images(all_images, context_key, has_more=False):
-        """Display loaded images with filters and pagination"""
-        global current_loaded_data
-        
+            # Remove loading indicator
+            loading_frame.destroy()
+
         # Clear UI for fresh display
         for widget in scroll_frame.winfo_children():
             widget.destroy()
         image_refs.clear()
 
-        # Responsive filter frame
-        filter_padding = max(12, int(15 * font_scale))
-        filter_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
-        filter_frame.pack(pady=(filter_padding, int(10 * font_scale)), fill="x",
-                          padx=int(20 * font_scale), ipady=int(12 * font_scale))
+        # Use current_loaded_data instead of images_by_branch
+        all_images = current_loaded_data
 
-        transaction_types = sorted(
-            set(img.get("transaction_type", "") for img in all_images if img.get("transaction_type")))
-        transaction_types = ["All"] + transaction_types
-        trans_type_var = tk.StringVar(value="All")
-
-        filename_search_var = tk.StringVar()
-
-        # Responsive filter rows
-        filter_row1 = tk.Frame(filter_frame, bg=COLORS['surface'])
-        filter_row1.pack(fill="x", pady=(0, int(8 * font_scale)))
-
-        # Responsive labels and controls
+        # Professional filter frame with shadow effect - Responsive Design
+        filter_padding = max(10, int(12 * font_scale))
+        
+        filter_shadow = tk.Frame(scroll_frame, bg='#cbd5e1')
+        filter_shadow.pack(pady=(filter_padding, int(8 * font_scale)), fill="x", padx=int(15 * font_scale))
+        
+        filter_frame = tk.Frame(filter_shadow, bg=COLORS['surface'], relief="flat", bd=0)
+        filter_frame.pack(fill="x", padx=(0, 2), pady=(0, 2))
+        filter_frame.columnconfigure(0, weight=1)
+        
+        # Filter header with title
+        filter_header = tk.Frame(filter_frame, bg=COLORS['surface'])
+        filter_header.pack(fill="x", padx=int(10 * font_scale), pady=(int(8 * font_scale), int(5 * font_scale)))
+        
         tk.Label(
-            filter_row1,
-            text="Transaction Type:",
+            filter_header,
+            text="🔍 Filters",
             font=("Segoe UI", get_font_size(11), "bold"),
             bg=COLORS['surface'],
             fg=COLORS['text']
-        ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
+        ).pack(side="left")
 
-        trans_type_menu = tk.OptionMenu(filter_row1, trans_type_var, *transaction_types)
+        filename_search_var = tk.StringVar()
+
+        # Determine available transaction types
+        if filter_transaction_type:
+            # For filtered view (liaison users), show only the filtered types
+            if isinstance(filter_transaction_type, list):
+                transaction_types = ["All"] + sorted(filter_transaction_type)
+            else:
+                transaction_types = ["All", filter_transaction_type]
+        else:
+            # For normal view, show all available types
+            transaction_types = sorted(
+                set(img.get("transaction_type", "") for img in all_images if img.get("transaction_type")))
+            transaction_types = ["All"] + transaction_types
+
+        trans_type_var = tk.StringVar(value="All")
+
+        # Single responsive filter row using grid for better control
+        filter_row1 = tk.Frame(filter_frame, bg=COLORS['surface'])
+        filter_row1.pack(fill="x", pady=(0, int(8 * font_scale)), padx=int(10 * font_scale))
+
+        # Left group: Transaction Type + Search
+        left_group = tk.Frame(filter_row1, bg=COLORS['surface'])
+        left_group.pack(side="left", fill="x", expand=True)
+
+        # Transaction Type
+        trans_type_label = tk.Label(
+            left_group,
+            text="Transaction Type:",
+            font=("Segoe UI", get_font_size(9)),
+            bg=COLORS['surface'],
+            fg=COLORS['text']
+        )
+        trans_type_label.pack(side="left", padx=(0, int(3 * font_scale)))
+
+        trans_type_menu = tk.OptionMenu(left_group, trans_type_var, *transaction_types)
         trans_type_menu.config(
-            font=("Segoe UI", get_font_size(10)),
+            font=("Segoe UI", get_font_size(9)),
             bg=COLORS['surface'],
             fg=COLORS['text'],
             activebackground=COLORS['secondary'],
             activeforeground='white',
             bd=1,
             relief="solid",
-            highlightthickness=0
+            highlightthickness=0,
+            width=6
         )
         trans_type_menu["menu"].config(
-            font=("Segoe UI", get_font_size(10)),
+            font=("Segoe UI", get_font_size(9)),
             bg=COLORS['surface'],
             fg=COLORS['text'],
             activebackground=COLORS['secondary']
         )
-        trans_type_menu.pack(side="left", padx=(0, int(20 * font_scale)))
+        trans_type_menu.pack(side="left", padx=(0, int(12 * font_scale)))
 
-        # Responsive filename search
+        # Search Filename
         tk.Label(
-            filter_row1,
-            text="🔍 Search Filename:",
-            font=("Segoe UI", get_font_size(11), "bold"),
+            left_group,
+            text="🔍 Search:",
+            font=("Segoe UI", get_font_size(9)),
             bg=COLORS['surface'],
             fg=COLORS['text']
-        ).pack(side="left", padx=(0, int(5 * font_scale)))
+        ).pack(side="left", padx=(0, int(3 * font_scale)))
 
-        # Responsive search entry width
-        search_width = max(20, min(35, int(25 * (screen_width / 1920))))
+        # Responsive search entry - expands with window
         filename_search_entry = tk.Entry(
-            filter_row1,
+            left_group,
             textvariable=filename_search_var,
-            font=("Segoe UI", get_font_size(10)),
-            bg=COLORS['surface'],
+            font=("Segoe UI", get_font_size(9)),
+            bg='white',
             fg=COLORS['text'],
             bd=1,
             relief="solid",
-            width=search_width,
             insertbackground=COLORS['secondary']
         )
-        filename_search_entry.pack(side="left", padx=(0, int(10 * font_scale)))
+        filename_search_entry.pack(side="left", fill="x", expand=True, padx=(0, int(8 * font_scale)))
 
         # Placeholder text behavior
         def on_filename_focus_in(event):
@@ -1020,9 +1097,9 @@ def _old_open_admin_dashboard_group3(admin_data):
         filename_search_entry.bind("<FocusIn>", on_filename_focus_in)
         filename_search_entry.bind("<FocusOut>", on_filename_focus_out)
 
-        # Second row for date filters
+        # Second row for date filters and buttons
         filter_row2 = tk.Frame(filter_frame, bg=COLORS['surface'])
-        filter_row2.pack(fill="x", pady=(int(8 * font_scale), 0))
+        filter_row2.pack(fill="x", padx=int(10 * font_scale), pady=(0, int(8 * font_scale)))
 
         try:
             from tkcalendar import DateEntry
@@ -1030,61 +1107,31 @@ def _old_open_admin_dashboard_group3(admin_data):
             tk.Label(
                 filter_row2,
                 text="[tkcalendar not installed]",
-                font=("Segoe UI", get_font_size(10)),
+                font=("Segoe UI", get_font_size(9)),
                 fg=COLORS['danger'],
                 bg=COLORS['surface']
-            ).pack(side="left", padx=(0, int(5 * font_scale)))
+            ).pack(side="left", padx=(0, int(3 * font_scale)))
             DateEntry = None
-            
-        # sort_var = tk.StringVar(value="Newest First")
-
-        # tk.Label(
-        #     filter_row2,
-        #     text="Sort:",
-        #     font=("Segoe UI", get_font_size(11), "bold"),
-        #     bg=COLORS['surface'],
-        #     fg=COLORS['text']
-        # ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
-
-        # sort_menu = tk.OptionMenu(filter_row2, sort_var, "Newest First", "Oldest First",
-        #                         command=lambda _: apply_filters())
-        # sort_menu.config(
-        #     font=("Segoe UI", get_font_size(10)),
-        #     bg=COLORS['surface'],
-        #     fg=COLORS['text'],
-        #     activebackground=COLORS['secondary'],
-        #     activeforeground='white',
-        #     bd=1,
-        #     relief="solid"
-        # )
-        # sort_menu["menu"].config(
-        #     font=("Segoe UI", get_font_size(10)),
-        #     bg=COLORS['surface'],
-        #     fg=COLORS['text'],
-        #     activebackground=COLORS['secondary']
-        # )
-        # sort_menu.pack(side="left", padx=(0, int(15 * font_scale)))    
 
         tk.Label(
-        filter_row2,
-        text="From:",
-        font=("Segoe UI", get_font_size(11), "bold"),
-        bg=COLORS['surface'],
-        fg=COLORS['text']
-    ).pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
-
+            filter_row2,
+            text="From:",
+            font=("Segoe UI", get_font_size(9)),
+            bg=COLORS['surface'],
+            fg=COLORS['text']
+        ).pack(side="left", padx=(0, int(3 * font_scale)))
 
         start_date_var = tk.StringVar()
         end_date_var = tk.StringVar()
 
-        # Responsive date entry width
-        date_width = max(10, int(12 * font_scale))
+        # Compact date entry width
+        date_width = 10
 
         if 'DateEntry' in locals() and DateEntry:
             start_date_picker = DateEntry(
                 filter_row2,
                 textvariable=start_date_var,
-                font=("Segoe UI", get_font_size(10)),
+                font=("Segoe UI", get_font_size(9)),
                 width=date_width,
                 date_pattern='yyyy-mm-dd',
                 background=COLORS['secondary'],
@@ -1092,20 +1139,20 @@ def _old_open_admin_dashboard_group3(admin_data):
                 borderwidth=1,
                 relief="solid"
             )
-            start_date_picker.pack(side="left", padx=(0, int(10 * font_scale)))
+            start_date_picker.pack(side="left", padx=(0, int(8 * font_scale)))
 
             tk.Label(
                 filter_row2,
                 text="To:",
-                font=("Segoe UI", get_font_size(11), "bold"),
+                font=("Segoe UI", get_font_size(9)),
                 bg=COLORS['surface'],
                 fg=COLORS['text']
-            ).pack(side="left", padx=(0, int(5 * font_scale)))
+            ).pack(side="left", padx=(0, int(3 * font_scale)))
 
             end_date_picker = DateEntry(
                 filter_row2,
                 textvariable=end_date_var,
-                font=("Segoe UI", get_font_size(10)),
+                font=("Segoe UI", get_font_size(9)),
                 width=date_width,
                 date_pattern='yyyy-mm-dd',
                 background=COLORS['secondary'],
@@ -1113,22 +1160,79 @@ def _old_open_admin_dashboard_group3(admin_data):
                 borderwidth=1,
                 relief="solid"
             )
-            end_date_picker.pack(side="left", padx=(0, int(15 * font_scale)))
+            end_date_picker.pack(side="left", padx=(0, int(10 * font_scale)))
         else:
             date_entry_style = {
-                'font': ("Segoe UI", get_font_size(10)),
-                'bg': COLORS['surface'],
+                'font': ("Segoe UI", get_font_size(9)),
+                'bg': 'white',
                 'fg': COLORS['text'],
                 'bd': 1,
                 'relief': "solid",
                 'insertbackground': COLORS['secondary']
             }
             tk.Entry(filter_row2, textvariable=start_date_var, width=date_width, **date_entry_style).pack(
-                side="left", padx=(0, int(10 * font_scale)))
-            tk.Label(filter_row2, text="To:", font=("Segoe UI", get_font_size(11), "bold"),
-                     bg=COLORS['surface'], fg=COLORS['text']).pack(side="left", padx=(0, int(5 * font_scale)))
+                side="left", padx=(0, int(8 * font_scale)))
+            tk.Label(filter_row2, text="To:", font=("Segoe UI", get_font_size(9)),
+                     bg=COLORS['surface'], fg=COLORS['text']).pack(side="left", padx=(0, int(3 * font_scale)))
             tk.Entry(filter_row2, textvariable=end_date_var, width=date_width, **date_entry_style).pack(
-                side="left", padx=(0, int(15 * font_scale)))
+                side="left", padx=(0, int(10 * font_scale)))
+
+        # Page size selector - allows admin to control how many images to load
+        tk.Label(
+            filter_row2,
+            text="│ Load:",
+            font=("Segoe UI", get_font_size(9)),
+            bg=COLORS['surface'],
+            fg=COLORS['text']
+        ).pack(side="left", padx=(int(5 * font_scale), int(3 * font_scale)))
+        
+        page_size_var = tk.StringVar(value="500")
+        page_size_options = ["100", "250", "500", "1000", "2000", "5000", "All"]
+        
+        page_size_dropdown = ttk.Combobox(
+            filter_row2,
+            textvariable=page_size_var,
+            values=page_size_options,
+            font=("Segoe UI", get_font_size(9)),
+            width=6,
+            state="readonly"
+        )
+        page_size_dropdown.pack(side="left", padx=(0, int(5 * font_scale)))
+        
+        def on_page_size_change(*args):
+            """Update page size when dropdown changes"""
+            global pagination_state
+            selected = page_size_var.get()
+            if selected == "All":
+                pagination_state["page_size"] = 10000  # Large number to get all
+            else:
+                pagination_state["page_size"] = int(selected)
+        
+        page_size_var.trace_add("write", on_page_size_change)
+        
+        # Reload button - reloads data with the selected page size
+        def reload_with_new_size():
+            """Reload data with the currently selected page size"""
+            if current_context.get("type") and current_context.get("value"):
+                if current_context["type"] == "corporation":
+                    show_images(corporation=current_context["value"], force_reload=True)
+                elif current_context["type"] == "branch":
+                    show_images(branch=current_context["value"], force_reload=True)
+        
+        reload_btn = tk.Button(
+            filter_row2,
+            text="🔄",
+            font=("Segoe UI", get_font_size(9)),
+            bg=COLORS['primary'],
+            fg="white",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            padx=int(6 * font_scale),
+            pady=int(3 * font_scale),
+            command=reload_with_new_size
+        )
+        reload_btn.pack(side="left", padx=(0, int(8 * font_scale)))
 
         # Responsive pagination - adjust per screen size
         if screen_width >= 1920:
@@ -1144,12 +1248,12 @@ def _old_open_admin_dashboard_group3(admin_data):
         filtered_images = []
         selected_images = set()
 
-        # Responsive button styling
-        button_padding_x = max(12, int(15 * font_scale))
-        button_padding_y = max(6, int(8 * font_scale))
+        # Compact button styling
+        button_padding_x = max(8, int(10 * font_scale))
+        button_padding_y = max(4, int(5 * font_scale))
 
         button_style = {
-            'font': ("Segoe UI", get_font_size(10), "bold"),
+            'font': ("Segoe UI", get_font_size(9), "bold"),
             'bd': 0,
             'relief': "flat",
             'cursor': "hand2",
@@ -1233,7 +1337,6 @@ def _old_open_admin_dashboard_group3(admin_data):
 
             for doc_data in to_delete:
                 filename = doc_data.get("filename", "this file")
-                branch_name = doc_data.get("branch", "")
                 try:
                     date = doc_data.get("date", "")
                     branch_folder = doc_data.get("branch", "Unknown_Branch")
@@ -1246,9 +1349,6 @@ def _old_open_admin_dashboard_group3(admin_data):
                         pass
 
                     db.collection("Uploaded_Images").document(doc_data["doc_id"]).delete()
-                    
-                    # Update Branches_Index to keep it in sync
-                    decrement_branch_index(branch_name)
 
                     # Remove from current loaded data
                     if doc_data in current_loaded_data:
@@ -1273,9 +1373,50 @@ def _old_open_admin_dashboard_group3(admin_data):
             return date_str.strip().replace("–", "-").replace("—", "-")
 
         def matches(img):
-            ttype = trans_type_var.get().strip().lower()
-            start_val = clean_date(start_date_var.get().strip())
-            end_val = clean_date(end_date_var.get().strip())
+            img_type = img.get("transaction_type", "").strip()
+            ttype = trans_type_var.get().strip()
+
+            # First, check if image type is allowed by filter_transaction_type (if set)
+            if filter_transaction_type:
+                if isinstance(filter_transaction_type, list):
+                    # Check if image type is in the allowed list
+                    if img_type not in filter_transaction_type:
+                        return False
+                else:
+                    # Single string - exact match
+                    if img_type != filter_transaction_type:
+                        return False
+
+            # Then, check if user selected a specific type in dropdown
+            img_type_lower = img_type.lower()
+            if ttype != "all" and img_type_lower != ttype.lower():
+                return False
+
+            # Get date values from DateEntry widgets if available, otherwise from StringVars
+            start_val = ""
+            end_val = ""
+
+            if 'start_date_picker' in locals():
+                try:
+                    # Get date directly from DateEntry widget
+                    start_date_obj = start_date_picker.get_date()
+                    if start_date_obj:
+                        start_val = start_date_obj.strftime("%Y-%m-%d")
+                except:
+                    start_val = clean_date(start_date_var.get().strip())
+            else:
+                start_val = clean_date(start_date_var.get().strip())
+
+            if 'end_date_picker' in locals():
+                try:
+                    # Get date directly from DateEntry widget
+                    end_date_obj = end_date_picker.get_date()
+                    if end_date_obj:
+                        end_val = end_date_obj.strftime("%Y-%m-%d")
+                except:
+                    end_val = clean_date(end_date_var.get().strip())
+            else:
+                end_val = clean_date(end_date_var.get().strip())
 
             filename_query = filename_search_var.get().strip().lower()
             if filename_query and filename_query != "type filename here...":
@@ -1283,9 +1424,26 @@ def _old_open_admin_dashboard_group3(admin_data):
                 if filename_query not in img_filename:
                     return False
 
-            start_date = datetime.datetime.strptime(start_val, "%Y-%m-%d") if start_val else None
-            end_date = datetime.datetime.strptime(end_val, "%Y-%m-%d") if end_val else None
-            
+            start_date = None
+            end_date = None
+
+            # Try parsing the date with multiple formats to handle different inputs
+            if start_val:
+                for date_format in ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"]:
+                    try:
+                        start_date = datetime.datetime.strptime(start_val, date_format)
+                        break
+                    except ValueError:
+                        continue
+
+            if end_val:
+                for date_format in ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"]:
+                    try:
+                        end_date = datetime.datetime.strptime(end_val, date_format)
+                        break
+                    except ValueError:
+                        continue
+
             # Parse image date - if invalid, only exclude if date filters are active
             img_date_str = clean_date(img.get("date", ""))
             img_date = None
@@ -1294,15 +1452,10 @@ def _old_open_admin_dashboard_group3(admin_data):
                     img_date = datetime.datetime.strptime(img_date_str, "%Y-%m-%d")
             except:
                 pass  # img_date remains None
-            
+
             # If date filters are active but image has no valid date, exclude it
             # If no date filters, show all images regardless of date validity
             if (start_date or end_date) and img_date is None:
-                return False
-
-            img_type = img.get("transaction_type", "").strip().lower()
-
-            if ttype != "all" and img_type != ttype:
                 return False
 
             if start_date and img_date and img_date < start_date:
@@ -1312,9 +1465,9 @@ def _old_open_admin_dashboard_group3(admin_data):
 
             return True
 
-
+        # IMPROVED FILTER APPLICATION WITH DEBOUNCING
         def create_debounced_filter():
-           
+            """Create a debounced filter function to prevent excessive calls"""
             filter_timer = [None]
 
             def debounced_apply_filters(*args):
@@ -1330,29 +1483,8 @@ def _old_open_admin_dashboard_group3(admin_data):
                 try:
                     filter_timer[0] = None  # Clear timer reference
 
-                    ttype = trans_type_var.get().strip().lower()
-                    start_val = clean_date(start_date_var.get().strip())
-                    end_val = clean_date(end_date_var.get().strip())
-
-                    # Validate dates
-                    start_date = None
-                    end_date = None
-
-                    if start_val:
-                        try:
-                            start_date = datetime.datetime.strptime(start_val, "%Y-%m-%d")
-                        except ValueError:
-                            pass
-
-                    if end_val:
-                        try:
-                            end_date = datetime.datetime.strptime(end_val, "%Y-%m-%d")
-                        except ValueError:
-                            pass
-
                     # Apply filters
                     filtered = []
-                    total_images = len(all_images)
 
                     for i, img in enumerate(all_images):
                         if matches(img):
@@ -1379,6 +1511,10 @@ def _old_open_admin_dashboard_group3(admin_data):
                 apply_filters()
 
         filename_search_var.trace_add("write", on_filename_search_change)
+
+        # Add trace bindings for date variables to trigger filter on change
+        start_date_var.trace_add("write", lambda *args: apply_filters())
+        end_date_var.trace_add("write", lambda *args: apply_filters())
 
         def download_all_images():
             if not filtered_images:
@@ -1411,123 +1547,9 @@ def _old_open_admin_dashboard_group3(admin_data):
 
             messagebox.showinfo("Download Complete", f"Downloaded: {success}, Failed: {failed}")
 
-        # def display_images_page():
-        #     for widget in scroll_frame.winfo_children():
-        #         if widget != filter_frame:
-        #             widget.destroy()
-        #     image_refs.clear()
-
-        #     # Get sort preference
-        #     sort_order = sort_var.get()
-        #     is_newest_first = sort_order == "Newest First"
-
-        #     def get_date_for_sorting(img):
-               
-        #         date_str = img.get("date", "")
-        #         try:
-        #             return datetime.datetime.strptime(date_str.strip(), "%Y-%m-%d")
-        #         except:
-        #             return datetime.datetime.min
-            
-        #     # Sort based on user selection
-        #     sorted_images = sorted(filtered_images, key=get_date_for_sorting, reverse=is_newest_first)
-            
-        #     start = current_page[0] * images_per_page
-        #     end = start + images_per_page
-        #     page_images = sorted_images[start:end]
-        #     # Responsive search results info
-        #     if filename_search_var.get().strip() and filename_search_var.get().strip().lower() != "type filename here...":
-        #         search_info_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
-        #         search_info_frame.pack(fill="x", padx=int(20 * font_scale),
-        #                                pady=(int(5 * font_scale), int(8 * font_scale)),
-        #                                ipady=int(8 * font_scale))
-
-        #         search_query = filename_search_var.get().strip()
-        #         results_count = len(filtered_images)
-
-        #         tk.Label(
-        #             search_info_frame,
-        #             text=f"Search results for '{search_query}': {results_count} files found",
-        #             font=("Segoe UI", get_font_size(11), "bold"),
-        #             bg=COLORS['surface'],
-        #             fg=COLORS['secondary']
-        #         ).pack(padx=int(10 * font_scale), pady=int(5 * font_scale))
-                
-                
-
-        #     # Responsive select all
-        #     select_all_var = tk.BooleanVar(
-        #         value=all(img["doc_id"] in selected_images for img in page_images) and len(page_images) > 0)
-
-        #     def on_select_all():
-        #         if select_all_var.get():
-        #             for img in page_images:
-        #                 selected_images.add(img["doc_id"])
-        #         else:
-        #             for img in page_images:
-        #                 selected_images.discard(img["doc_id"])
-        #         update_selected_buttons()
-        #         display_images_page()
-
-        #     select_all_frame = tk.Frame(scroll_frame, bg=COLORS['surface'])
-        #     select_all_frame.pack(fill="x", padx=int(20 * font_scale), pady=(int(5 * font_scale), int(8 * font_scale)))
-
-        #     select_all_cb = tk.Checkbutton(
-        #         select_all_frame,
-        #         text="Select All (this page & filter)",
-        #         variable=select_all_var,
-        #         command=on_select_all,
-        #         bg=COLORS['surface'],
-        #         fg=COLORS['text'],
-        #         font=("Segoe UI", get_font_size(11), "bold"),
-        #         activebackground=COLORS['surface'],
-        #         activeforeground=COLORS['secondary'],
-        #         selectcolor=COLORS['secondary'],
-        #         bd=0,
-        #         highlightthickness=0
-        #     )
-        #     select_all_cb.pack(anchor="w", padx=int(10 * font_scale), pady=int(5 * font_scale))
-
-        #     if not page_images:
-        #         no_images_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
-        #         no_images_frame.pack(pady=int(30 * font_scale), padx=int(20 * font_scale), fill="x",
-        #                              ipady=int(30 * font_scale))
-
-        #         if filename_search_var.get().strip() and filename_search_var.get().strip().lower() != "type filename here...":
-        #             tk.Label(
-        #                 no_images_frame,
-        #                 text="No files match your search",
-        #                 font=("Segoe UI", get_font_size(16), "bold"),
-        #                 fg=COLORS['muted'],
-        #                 bg=COLORS['surface']
-        #             ).pack()
-        #             tk.Label(
-        #                 no_images_frame,
-        #                 text=f"No files found with filename containing: '{filename_search_var.get().strip()}'",
-        #                 font=("Segoe UI", get_font_size(12)),
-        #                 fg=COLORS['muted'],
-        #                 bg=COLORS['surface']
-        #             ).pack(pady=(int(5 * font_scale), 0))
-        #         else:
-        #             tk.Label(
-        #                 no_images_frame,
-        #                 text="No files found",
-        #                 font=("Segoe UI", get_font_size(16), "bold"),
-        #                 fg=COLORS['muted'],
-        #                 bg=COLORS['surface']
-        #             ).pack()
-        #             tk.Label(
-        #                 no_images_frame,
-        #                 text="Try adjusting your filters or select a different branch",
-        #                 font=("Segoe UI", get_font_size(12)),
-        #                 fg=COLORS['muted'],
-        #                 bg=COLORS['surface']
-        #             ).pack(pady=(int(5 * font_scale), 0))
-        #         return
-        
         def display_images_page():
             for widget in scroll_frame.winfo_children():
-                if widget != filter_frame:
+                if widget != filter_shadow and widget != filter_frame:
                     widget.destroy()
             image_refs.clear()
 
@@ -1624,7 +1646,7 @@ def _old_open_admin_dashboard_group3(admin_data):
                 return
 
             def view_full_file(file_data):
-                
+                """Enhanced file viewer that handles different file types"""
                 filename = file_data.get('filename', 'Unknown File')
                 file_url = file_data.get("file_url") or file_data.get("image_url")
 
@@ -1686,7 +1708,6 @@ def _old_open_admin_dashboard_group3(admin_data):
                                 drag_data["y"] = event.y
 
                             def do_drag(event):
-                                
                                 dx = event.x - drag_data["x"]
                                 dy = event.y - drag_data["y"]
                                 canvas_popup.move("IMG", dx, dy)
@@ -1913,20 +1934,42 @@ def _old_open_admin_dashboard_group3(admin_data):
                 img_label.bind("<Enter>", on_enter)
                 img_label.bind("<Leave>", on_leave)
 
-            # Responsive file cards
+            # Professional file cards with hover effects
             for file_data in page_images:
-                card_padding = max(15, int(20 * font_scale))
+                card_padding = max(18, int(22 * font_scale))
+                
+                # Card container with shadow effect
+                card_shadow = tk.Frame(scroll_frame, bg='#cbd5e1', relief="flat")
+                card_shadow.pack(padx=int(22 * font_scale), pady=(int(6 * font_scale), int(10 * font_scale)), fill="x")
+                
                 card_frame = tk.Frame(
-                    scroll_frame,
+                    card_shadow,
                     bg=COLORS['surface'],
                     relief="flat",
-                    bd=1,
-                    highlightbackground=COLORS['border'],
-                    highlightthickness=1
+                    bd=0,
                 )
-                card_frame.pack(padx=int(20 * font_scale), pady=int(8 * font_scale), fill="x",
-                                ipadx=card_padding, ipady=card_padding)
+                card_frame.pack(fill="x", padx=(0, 2), pady=(0, 2), ipadx=card_padding, ipady=card_padding)
                 card_frame.grid_columnconfigure(1, weight=1)
+                
+                # Card hover effect
+                def on_card_enter(e, cf=card_frame):
+                    cf.config(bg='#f8fafc')
+                    for child in cf.winfo_children():
+                        try:
+                            child.config(bg='#f8fafc')
+                        except:
+                            pass
+                
+                def on_card_leave(e, cf=card_frame):
+                    cf.config(bg=COLORS['surface'])
+                    for child in cf.winfo_children():
+                        try:
+                            child.config(bg=COLORS['surface'])
+                        except:
+                            pass
+                
+                card_frame.bind("<Enter>", on_card_enter)
+                card_frame.bind("<Leave>", on_card_leave)
 
                 # Responsive file preview with default icon
                 img_width = max(20, int(24 * font_scale))
@@ -2043,117 +2086,223 @@ def _old_open_admin_dashboard_group3(admin_data):
                 )
                 view_btn.pack()
 
-            # Responsive navigation
-            nav_frame = tk.Frame(scroll_frame, bg=COLORS['surface'], relief="flat", bd=1)
-            nav_frame.pack(pady=int(15 * font_scale), padx=int(20 * font_scale), fill="x",
-                           ipady=int(10 * font_scale))
+            # Professional navigation with shadow
+            nav_shadow = tk.Frame(scroll_frame, bg='#cbd5e1')
+            nav_shadow.pack(pady=int(15 * font_scale), padx=int(22 * font_scale), fill="x")
+            
+            nav_frame = tk.Frame(nav_shadow, bg=COLORS['surface'], relief="flat", bd=0)
+            nav_frame.pack(fill="x", padx=(0, 2), pady=(0, 2), ipady=int(12 * font_scale))
 
             nav_btn_style = {
                 'font': ("Segoe UI", get_font_size(10), "bold"),
                 'bd': 0,
                 'relief': "flat",
                 'cursor': "hand2",
-                'padx': int(20 * font_scale),
-                'pady': int(8 * font_scale)
+                'padx': int(22 * font_scale),
+                'pady': int(10 * font_scale)
             }
 
-            # Previous button
+            # Previous button with modern style
+            prev_state = "normal" if current_page[0] > 0 else "disabled"
+            prev_bg = COLORS['primary'] if current_page[0] > 0 else '#94a3b8'
             prev_btn = tk.Button(
                 nav_frame,
-                text="Previous",
-                state="normal" if current_page[0] > 0 else "disabled",
-                bg=COLORS['secondary'] if current_page[0] > 0 else COLORS['muted'],
+                text="‹ Previous",
+                state=prev_state,
+                bg=prev_bg,
                 fg="white",
                 command=lambda: go_page(-1),
                 **nav_btn_style
             )
-            prev_btn.pack(side="left", padx=(int(10 * font_scale), int(5 * font_scale)))
+            prev_btn.pack(side="left", padx=(int(15 * font_scale), int(8 * font_scale)))
 
-            # Page info
+            # Page info with styling
+            total_pages = max(1, (len(filtered_images) - 1) // images_per_page + 1)
+            page_frame = tk.Frame(nav_frame, bg=COLORS['surface'])
+            page_frame.pack(side="left", padx=int(15 * font_scale))
+            
             tk.Label(
-                nav_frame,
-                text=f"Page {current_page[0] + 1} of {max(1, (len(filtered_images) - 1) // images_per_page + 1)}",
+                page_frame,
+                text=f"Page ",
                 bg=COLORS['surface'],
-                fg=COLORS['text'],
-                font=("Segoe UI", get_font_size(11), "bold")
-            ).pack(side="left", padx=int(20 * font_scale))
+                fg=COLORS['muted'],
+                font=("Segoe UI", get_font_size(10))
+            ).pack(side="left")
+            
+            tk.Label(
+                page_frame,
+                text=f"{current_page[0] + 1}",
+                bg=COLORS['surface'],
+                fg=COLORS['primary'],
+                font=("Segoe UI", get_font_size(12), "bold")
+            ).pack(side="left")
+            
+            tk.Label(
+                page_frame,
+                text=f" of {total_pages}",
+                bg=COLORS['surface'],
+                fg=COLORS['muted'],
+                font=("Segoe UI", get_font_size(10))
+            ).pack(side="left")
 
-            # Next button
+            # Next button with modern style
+            next_state = "normal" if end < len(filtered_images) else "disabled"
+            next_bg = COLORS['primary'] if end < len(filtered_images) else '#94a3b8'
             next_btn = tk.Button(
                 nav_frame,
-                text="Next",
-                state="normal" if end < len(filtered_images) else "disabled",
-                bg=COLORS['secondary'] if end < len(filtered_images) else COLORS['sidebar'],
+                text="Next ›",
+                state=next_state,
+                bg=next_bg,
                 fg="white",
                 command=lambda: go_page(1),
                 **nav_btn_style
             )
-            next_btn.pack(side="left", padx=(int(5 * font_scale), int(10 * font_scale)))
+            next_btn.pack(side="left", padx=(int(8 * font_scale), int(15 * font_scale)))
             
-            # Load More button (for server-side pagination)
-            if current_context.get("has_more", False):
-                def load_more_data():
-                    """Load next page of data from server"""
-                    last_doc = current_context.get("last_doc")
-                    context_type = current_context.get("type")
-                    context_value = current_context.get("value")
-                    
-                    if not context_type or not context_value:
-                        return
-                    
-                    # Show loading
-                    load_more_btn.config(text="Loading...", state="disabled")
-                    admin.update_idletasks()
-                    
-                    def on_more_loaded(new_data, new_last_doc, has_more):
-                        global current_loaded_data, current_context
-                        
-                        # Append new data to existing
-                        current_loaded_data.extend(new_data)
-                        current_context["last_doc"] = new_last_doc
-                        current_context["has_more"] = has_more
-                        
-                        # Refresh display with all data
-                        display_loaded_images(current_loaded_data, (context_type, context_value), has_more)
-                    
-                    # Load more based on context
-                    if context_type == "corporation":
-                        load_corporation_data_threaded(context_value, on_more_loaded, page_size=50)
-                    elif context_type == "branch":
-                        load_branch_data_threaded(context_value, on_more_loaded, page_size=50)
-                
+            # Load More button - only show if there are more images to load
+            if pagination_state["has_more"]:
                 load_more_btn = tk.Button(
                     nav_frame,
-                    text="Load More",
+                    text=f"📥 Load More ({pagination_state['total_loaded']} loaded)",
                     bg=COLORS['success'],
                     fg="white",
-                    command=load_more_data,
-                    **nav_btn_style
+                    font=("Segoe UI", get_font_size(10), "bold"),
+                    bd=0,
+                    relief="flat",
+                    cursor="hand2",
+                    padx=int(18 * font_scale),
+                    pady=int(8 * font_scale),
+                    command=load_more_images
                 )
-                load_more_btn.pack(side="right", padx=int(10 * font_scale))
-                
-                tk.Label(
-                    nav_frame,
-                    text="More data available",
-                    bg=COLORS['surface'],
-                    fg=COLORS['success'],
-                    font=("Segoe UI", get_font_size(9), "italic")
-                ).pack(side="right", padx=int(5 * font_scale))
+                load_more_btn.pack(side="left", padx=int(10 * font_scale))
+            
+            # Results count
+            tk.Label(
+                nav_frame,
+                text=f"Showing {start + 1}-{min(end, len(filtered_images))} of {len(filtered_images)} files" + 
+                     (f" (more available)" if pagination_state["has_more"] else " (all loaded)"),
+                bg=COLORS['surface'],
+                fg=COLORS['muted'],
+                font=("Segoe UI", get_font_size(9))
+            ).pack(side="right", padx=int(15 * font_scale))
 
         def go_page(direction):
             current_page[0] += direction
             display_images_page()
 
+        def load_more_images():
+            """Load more images from Firebase and append to current data"""
+            global current_loaded_data, pagination_state
+            
+            if not pagination_state["has_more"] or not pagination_state["last_doc"]:
+                messagebox.showinfo("Info", "All images have been loaded.")
+                return
+            
+            # Show loading indicator
+            loading_popup = tk.Toplevel(admin)
+            loading_popup.title("Loading...")
+            loading_popup.geometry("300x100")
+            loading_popup.transient(admin)
+            loading_popup.grab_set()
+            loading_popup.configure(bg=COLORS['surface'])
+            
+            # Center the popup
+            loading_popup.update_idletasks()
+            x = admin.winfo_x() + (admin.winfo_width() - 300) // 2
+            y = admin.winfo_y() + (admin.winfo_height() - 100) // 2
+            loading_popup.geometry(f"+{x}+{y}")
+            
+            tk.Label(
+                loading_popup,
+                text="🔄 Loading more images...",
+                font=("Segoe UI", 12, "bold"),
+                bg=COLORS['surface'],
+                fg=COLORS['secondary']
+            ).pack(expand=True)
+            
+            admin.update_idletasks()
+            
+            try:
+                # Load more data based on current context
+                if current_context["type"] == "corporation":
+                    data_result = load_corporation_data(
+                        current_context["value"],
+                        page_size=pagination_state["page_size"],
+                        last_doc=pagination_state["last_doc"]
+                    )
+                elif current_context["type"] == "branch":
+                    data_result = load_branch_data(
+                        current_context["value"],
+                        page_size=pagination_state["page_size"],
+                        last_doc=pagination_state["last_doc"]
+                    )
+                else:
+                    loading_popup.destroy()
+                    return
+                
+                if isinstance(data_result, tuple):
+                    new_data, new_last_doc, new_has_more = data_result
+                    
+                    # Append new data to existing
+                    current_loaded_data.extend(new_data)
+                    pagination_state["last_doc"] = new_last_doc
+                    pagination_state["has_more"] = new_has_more
+                    pagination_state["total_loaded"] = len(current_loaded_data)
+                    
+                    # Update all_images reference and reapply filters
+                    all_images.clear()
+                    all_images.extend(current_loaded_data)
+                    
+                    loading_popup.destroy()
+                    
+                    # Reapply filters to include new data
+                    apply_filters()
+                    
+                    messagebox.showinfo(
+                        "Loaded", 
+                        f"Loaded {len(new_data)} more images.\n"
+                        f"Total: {pagination_state['total_loaded']} images loaded.\n"
+                        f"{'More available.' if new_has_more else 'All images loaded.'}"
+                    )
+                else:
+                    loading_popup.destroy()
+                    messagebox.showerror("Error", "Failed to load more images.")
+                    
+            except Exception as e:
+                loading_popup.destroy()
+                messagebox.showerror("Error", f"Failed to load more images: {e}")
+
         if 'start_date_picker' in locals():
             start_date_picker.bind("<<DateEntrySelected>>", apply_filters)
             end_date_picker.bind("<<DateEntrySelected>>", apply_filters)
-            
 
-        # Responsive filter buttons
+        # Clear search button - placed on first row after search
+        def clear_filename_search():
+            filename_search_var.set("")
+            filename_search_entry.delete(0, tk.END)
+            filename_search_entry.insert(0, "Type filename here...")
+            filename_search_entry.config(fg=COLORS['muted'])
+            apply_filters()
+
+        tk.Button(
+            left_group,
+            text="Clear",
+            font=("Segoe UI", get_font_size(9)),
+            bg=COLORS['muted'],
+            fg="white",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            padx=int(8 * font_scale),
+            pady=int(3 * font_scale),
+            command=clear_filename_search
+        ).pack(side="left")
+
+        # Compact filter buttons on row 2
         tk.Button(
             filter_row2,
             text="Apply Filters",
-            font=("Segoe UI", get_font_size(10), "bold"),
+            font=("Segoe UI", get_font_size(9), "bold"),
             bg=COLORS['secondary'],
             fg="white",
             bd=0,
@@ -2163,12 +2312,11 @@ def _old_open_admin_dashboard_group3(admin_data):
             pady=button_padding_y,
             command=apply_filters
         ).pack(side="left", padx=(0, int(5 * font_scale)))
-    
 
         tk.Button(
             filter_row2,
             text="Download All",
-            font=("Segoe UI", get_font_size(10), "bold"),
+            font=("Segoe UI", get_font_size(9), "bold"),
             bg=COLORS['warning'],
             fg="white",
             bd=0,
@@ -2177,32 +2325,22 @@ def _old_open_admin_dashboard_group3(admin_data):
             padx=button_padding_x,
             pady=button_padding_y,
             command=download_all_images
-        ).pack(side="left", padx=int(5 * font_scale))
-
-        # Clear search button
-        def clear_filename_search():
-            filename_search_var.set("")
-            filename_search_entry.config(fg=COLORS['muted'])
-            filename_search_entry.insert(0, "Type filename here...")
-            apply_filters()
-
-        tk.Button(
-            filter_row1,
-            text="Clear",
-            font=("Segoe UI", get_font_size(9), "bold"),
-            bg=COLORS['muted'],
-            fg="white",
-            bd=0,
-            relief="flat",
-            cursor="hand2",
-            padx=int(10 * font_scale),
-            pady=int(6 * font_scale),
-            command=clear_filename_search
-        ).pack(side="left", padx=int(5 * font_scale))
+        ).pack(side="left")
 
         # Initialize filtered images with all loaded data
         filtered_images.clear()
-        filtered_images.extend(all_images)
+
+        # If filter_transaction_type is set, filter immediately
+        if filter_transaction_type:
+            if isinstance(filter_transaction_type, list):
+                # Filter by multiple transaction types
+                filtered_images.extend([img for img in all_images if img.get("transaction_type", "").strip() in filter_transaction_type])
+            else:
+                # Filter by single transaction type
+                filtered_images.extend([img for img in all_images if img.get("transaction_type", "").strip() == filter_transaction_type])
+        else:
+            filtered_images.extend(all_images)
+
         display_images_page()
 
         # Ensure scroll wheel works on all main content widgets
@@ -2216,29 +2354,44 @@ def _old_open_admin_dashboard_group3(admin_data):
         canvas.configure(scrollregion=canvas.bbox("all"))
 
     # Responsive Sidebar Design
-    group_name = admin_data.get("group", "Unknown Group")
+    group_name = admin_data.get("group", group_name_display)
 
-    # Responsive sidebar header
-    header_height = max(70, int(80 * font_scale))
-    sidebar_header = tk.Frame(sidebar, bg=COLORS['sidebar'], height=header_height)
-    sidebar_header.pack(fill="x", pady=(0, int(10 * font_scale)))
+    # Professional sidebar header with gradient-like effect
+    header_height = max(130, int(150 * font_scale))
+    sidebar_header = tk.Frame(sidebar, bg='#1e293b', height=header_height)
+    sidebar_header.pack(fill="x", pady=(0, int(5 * font_scale)))
     sidebar_header.pack_propagate(False)
+
+    # Logo/Brand area
+    brand_frame = tk.Frame(sidebar_header, bg='#1e293b')
+    brand_frame.pack(fill="x", pady=(int(10 * font_scale), int(3 * font_scale)))
+
+    tk.Label(
+        brand_frame,
+        text="📁",
+        font=("Segoe UI", get_font_size(20)),
+        bg='#1e293b',
+        fg=COLORS['accent']
+    ).pack()
 
     tk.Label(
         sidebar_header,
-        text="Welcome",
-        font=("Segoe UI", get_font_size(14), "bold"),
-        bg=COLORS['sidebar'],
+        text="RMS Admin",
+        font=("Segoe UI", get_font_size(16), "bold"),
+        bg='#1e293b',
         fg="white"
-    ).pack(pady=(int(20 * font_scale), int(2 * font_scale)))
+    ).pack(pady=(0, int(2 * font_scale)))
 
     tk.Label(
         sidebar_header,
         text=group_name,
-        font=("Segoe UI", get_font_size(16), "bold"),
-        bg=COLORS['sidebar'],
+        font=("Segoe UI", get_font_size(13), "bold"),
+        bg='#1e293b',
         fg=COLORS['accent']
-    ).pack()
+    ).pack(pady=(int(2 * font_scale), 0))
+    
+    # Separator line
+    tk.Frame(sidebar, bg='#334155', height=1).pack(fill="x", padx=int(15 * font_scale))
 
     # Responsive scrollable branches container
     available_height = screen_height - 200
@@ -2284,7 +2437,7 @@ def _old_open_admin_dashboard_group3(admin_data):
     selected_corp_var = tk.StringVar()
     selected_corp_var.set("Select Corporation")
 
-    corp_list = sorted(group3_corporations)
+    corp_list = sorted(group_corporations)
 
     def show_corporation_selector():
         popup = tk.Toplevel(admin)
@@ -2588,49 +2741,63 @@ def _old_open_admin_dashboard_group3(admin_data):
         popup.bind('<Escape>', lambda e: popup.destroy())
         popup.focus_set()
 
-    tk.Button(
-        button_section,
-        text="Add User",
-        bg=COLORS['success'],
-        fg="white",
-        command=lambda: open_add_user_popup_group3(admin),
-        **action_btn_style
-    ).pack(pady=int(3 * font_scale), fill="x")
+    # Modern action buttons with icons
+    def create_sidebar_action_btn(parent, text, icon, bg_color, hover_color, command):
+        btn = tk.Button(
+            parent,
+            text=f"{icon}  {text}",
+            font=("Segoe UI", get_font_size(10), "bold"),
+            bg=bg_color,
+            fg="white",
+            bd=0,
+            relief="flat",
+            cursor="hand2",
+            anchor="w",
+            padx=int(15 * font_scale),
+            pady=int(12 * font_scale),
+            activebackground=hover_color,
+            activeforeground="white",
+            command=command
+        )
+        btn.pack(pady=int(3 * font_scale), fill="x")
+        
+        def on_enter(e):
+            btn.config(bg=hover_color)
+        def on_leave(e):
+            btn.config(bg=bg_color)
+        btn.bind("<Enter>", on_enter)
+        btn.bind("<Leave>", on_leave)
+        return btn
+    
+    # Hide Add User and Logout buttons for liaison-compliance users viewing KYC
+    if not filter_transaction_type:
+        create_sidebar_action_btn(button_section, "Add User", "➕", COLORS['success'], '#059669', lambda: add_user_popup_func(admin))
 
-    tk.Button(
-        button_section,
-        text="Head Office",
-        bg='#8b5cf6',  # Purple color
-        fg="white",
-        command=head_office_menu,
-        **action_btn_style
-    ).pack(pady=int(3 * font_scale), fill="x")
+    create_sidebar_action_btn(button_section, "Head Office", "🏢", '#8b5cf6', '#7c3aed', head_office_menu)
 
-    tk.Button(
-        button_section,
-        text="Logout",
-        bg=COLORS['danger'],
-        fg="white",
-        command=logout,
-        **action_btn_style
-    ).pack(pady=int(3 * font_scale), fill="x")
+    # Hide Logout button for liaison-compliance users viewing KYC
+    if not filter_transaction_type:
+        create_sidebar_action_btn(button_section, "Logout", "🚪", COLORS['danger'], '#dc2626', logout)
 
-    # Footer section
+    # Professional Footer section
     footer_section = tk.Frame(bottom_container, bg=COLORS['sidebar'])
-    footer_section.pack(fill="x", pady=(int(8 * font_scale), int(5 * font_scale)))
+    footer_section.pack(fill="x", pady=(int(15 * font_scale), int(10 * font_scale)))
+    
+    # Separator line
+    tk.Frame(footer_section, bg='#334155', height=1).pack(fill="x", padx=int(15 * font_scale), pady=(0, int(10 * font_scale)))
 
     tk.Label(
         footer_section,
-        text="Developed by:",
-        font=("Segoe UI", get_font_size(9), "bold"),
-        fg="#94a3b8",
+        text="© 2026 RMS",
+        font=("Segoe UI", get_font_size(9)),
+        fg="#64748b",
         bg=COLORS['sidebar']
     ).pack()
 
     tk.Label(
         footer_section,
-        text="IT Department",
-        font=("Segoe UI", get_font_size(10), "bold"),
+        text="by IT Department",
+        font=("Segoe UI", get_font_size(9)),
         fg=COLORS['accent'],
         bg=COLORS['sidebar']
     ).pack()
@@ -2661,31 +2828,33 @@ def _old_open_admin_dashboard_group3(admin_data):
 
         show_list = filtered if filtered is not None else sorted(branches)
 
+        # Modern branch button style with rounded corners feel
         branch_btn_style = {
-            'font': ("Segoe UI", get_font_size(10), "bold"),
-            'bg': "#475569",
-            'fg': "white",
+            'font': ("Segoe UI", get_font_size(10)),
+            'bg': '#334155',
+            'fg': "#e2e8f0",
             'bd': 0,
             'relief': "flat",
             'cursor': "hand2",
-            'width': button_width,
-            'pady': int(6 * font_scale)
+            'anchor': "w",
+            'padx': int(15 * font_scale),
+            'pady': int(10 * font_scale)
         }
 
         for branch in show_list:
             btn = tk.Button(
                 branches_frame,
-                text=f"{branch}",
-                command=create_branch_button_handler(branch),  # Use the new handler
+                text=f"  📂  {branch}",
+                command=create_branch_button_handler(branch),
                 **branch_btn_style
             )
-            btn.pack(pady=2, padx=int(15 * font_scale), fill="x")
+            btn.pack(pady=1, padx=int(10 * font_scale), fill="x")
 
             def on_enter(e, button=btn):
-                button.config(bg=COLORS['accent'])
+                button.config(bg=COLORS['primary'], fg="white")
 
             def on_leave(e, button=btn):
-                button.config(bg="#475569")
+                button.config(bg='#334155', fg="#e2e8f0")
 
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
@@ -2739,7 +2908,7 @@ def _old_open_admin_dashboard_group3(admin_data):
 
     # SAFE WIDGET CLEANUP FUNCTION
     def cleanup_widgets():
-        """Clean up widgets and prevent memory leaks"""
+
         try:
             # Clear image references
             image_refs.clear()

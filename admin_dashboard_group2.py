@@ -1,7 +1,32 @@
-def open_admin_dashboard_group2(admin_data):
+"""
+Admin Dashboard Group 2
+========================
+This file uses the shared_admin_dashboard module.
+All changes should be made in shared_admin_dashboard.py
+"""
+from shared_admin_dashboard import create_admin_dashboard
+from corporations import group2_corporations
+from add_user_group2 import open_add_user_popup_group2
+
+
+def open_admin_dashboard_group2(admin_data, switch_group_callback=None):
+    """Open admin dashboard for Group 2 using shared module"""
+    create_admin_dashboard(
+        admin_data=admin_data,
+        group_corporations=group2_corporations,
+        add_user_popup_func=open_add_user_popup_group2,
+        group_name_display="Group 2",
+        switch_group_callback=switch_group_callback
+    )
+
+
+# ============================================================
+# OLD CODE BACKUP (can be deleted after confirming shared module works)
+# ============================================================
+def _old_open_admin_dashboard_group2(admin_data):
     import tkinter as tk
     from tkinter import messagebox, filedialog, ttk
-    from firebase_config import db, bucket
+    from firebase_config import db, bucket, get_branches_from_index, decrement_branch_index
     from PIL import Image, ImageTk
     import requests
     from add_user_group2 import open_add_user_popup_group2
@@ -16,7 +41,10 @@ def open_admin_dashboard_group2(admin_data):
     import threading
     from typing import Dict, List, Optional, Tuple, Any
 
-    VERSION = "1.1.3"
+    VERSION = "1.1.6"
+    
+    # Threading lock for safe UI updates
+    ui_lock = threading.Lock()
     class OptimizedFirestoreManager:
 
 
@@ -631,19 +659,21 @@ def open_admin_dashboard_group2(admin_data):
     # OPTIMIZED FIREBASE DATA LOADING - ON-DEMAND APPROACH
 
     def load_branches_only():
-        """Load only unique branches for the sidebar - lightweight query"""
+        """Load unique branches using Branches_Index for FAST loading"""
         try:
-            # Get all documents but only fetch branch field to minimize data transfer
-            docs = db.collection("Uploaded_Images").where("corporations", "in", group2_corporations).stream()
+            # Use the optimized Branches_Index collection
+            branches_list = get_branches_from_index(list(group2_corporations))
+            
+            if branches_list:
+                print(f"✅ Loaded {len(branches_list)} branches from Branches_Index")
+                return branches_list
+            
+            # Fallback to old method if index is empty
+            print("⚠️ Branches_Index empty, falling back to full scan...")
+            docs = db.collection("Uploaded_Images").where("corporations", "in", list(group2_corporations)[:10]).select(["branch"]).limit(500).stream()
 
             branches_set = set()
-            doc_count = 0
-
             for doc in docs:
-                doc_count += 1
-                if doc_count > 50000:  # Reasonable limit for branch discovery
-                    break
-
                 data = doc.to_dict()
                 if data and "branch" in data:
                     branch = data.get("branch", "").strip()
@@ -656,50 +686,89 @@ def open_admin_dashboard_group2(admin_data):
             messagebox.showerror("Error", f"Failed to load branches: {e}")
             return []
 
-    def load_branch_data(branch_name):
+    def load_branch_data(branch_name, page_size=50, last_doc=None):
+        """Load branch data with pagination for better performance"""
         try:
-            # Query only documents for this specific branch
-            docs = db.collection("Uploaded_Images").where("branch", "==", branch_name).stream()
+            query = db.collection("Uploaded_Images").where("branch", "==", branch_name).order_by("timestamp", direction="DESCENDING")
+            
+            if last_doc:
+                query = query.start_after(last_doc)
+            
+            query = query.limit(page_size)
+            docs = list(query.stream())
 
             branch_data = []
-            doc_count = 0
+            last_document = None
 
             for doc in docs:
-                doc_count += 1
-                # Get ALL documents for the selected branch - no limit
                 data = doc.to_dict()
                 if data:
                     data["doc_id"] = doc.id
+                    data["_doc_snapshot"] = doc
                     branch_data.append(data)
+                    last_document = doc
 
-            return branch_data
+            has_more = len(docs) == page_size
+            return branch_data, last_document, has_more
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load branch data for '{branch_name}': {e}")
-            return []
+            return [], None, False
 
-    def load_corporation_data(corporation_name):
-        """Load data for a specific corporation across all branches"""
+    def load_branch_data_threaded(branch_name, callback, page_size=50):
+        """Load branch data in background thread to keep UI responsive"""
+        def _load():
+            try:
+                data, last_doc, has_more = load_branch_data(branch_name, page_size)
+                admin.after(0, lambda: callback(data, last_doc, has_more))
+            except Exception as e:
+                admin.after(0, lambda: messagebox.showerror("Error", f"Failed to load data: {e}"))
+        
+        thread = threading.Thread(target=_load, daemon=True)
+        thread.start()
+        return thread
+
+    def load_corporation_data(corporation_name, page_size=50, last_doc=None):
+        """Load data for a specific corporation with pagination"""
         try:
-            # Query only documents for this specific corporation
-            docs = db.collection("Uploaded_Images").where("corporations", "==", corporation_name).stream()
+            query = db.collection("Uploaded_Images").where("corporations", "==", corporation_name).order_by("timestamp", direction="DESCENDING")
+            
+            if last_doc:
+                query = query.start_after(last_doc)
+            
+            query = query.limit(page_size)
+            docs = list(query.stream())
 
             corp_data = []
-            doc_count = 0
+            last_document = None
 
             for doc in docs:
-                doc_count += 1
-                # Get ALL documents for the selected corporation - no limit
                 data = doc.to_dict()
                 if data:
                     data["doc_id"] = doc.id
+                    data["_doc_snapshot"] = doc
                     corp_data.append(data)
+                    last_document = doc
 
-            return corp_data
+            has_more = len(docs) == page_size
+            return corp_data, last_document, has_more
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load corporation data for '{corporation_name}': {e}")
-            return []
+            return [], None, False
+
+    def load_corporation_data_threaded(corporation_name, callback, page_size=50):
+        """Load corporation data in background thread"""
+        def _load():
+            try:
+                data, last_doc, has_more = load_corporation_data(corporation_name, page_size)
+                admin.after(0, lambda: callback(data, last_doc, has_more))
+            except Exception as e:
+                admin.after(0, lambda: messagebox.showerror("Error", f"Failed to load data: {e}"))
+        
+        thread = threading.Thread(target=_load, daemon=True)
+        thread.start()
+        return thread
 
     # Initialize with lightweight branch loading
     available_branches = load_branches_only()
@@ -828,11 +897,13 @@ def open_admin_dashboard_group2(admin_data):
             # Update UI to show loading
             admin.update_idletasks()
 
-            # Load data based on selection
+            # Load data based on selection (functions now return tuple: data, last_doc, has_more)
             if corporation:
-                current_loaded_data = load_corporation_data(corporation)
+                data_result = load_corporation_data(corporation)
+                current_loaded_data = data_result[0] if isinstance(data_result, tuple) else data_result
             elif branch:
-                current_loaded_data = load_branch_data(branch)
+                data_result = load_branch_data(branch)
+                current_loaded_data = data_result[0] if isinstance(data_result, tuple) else data_result
 
             # Update current context
             current_context = {"type": context_key[0], "value": context_key[1]}
@@ -1164,10 +1235,19 @@ def open_admin_dashboard_group2(admin_data):
 
             start_date = datetime.datetime.strptime(start_val, "%Y-%m-%d") if start_val else None
             end_date = datetime.datetime.strptime(end_val, "%Y-%m-%d") if end_val else None
+            
+            # Parse image date - if invalid, only exclude if date filters are active
             img_date_str = clean_date(img.get("date", ""))
+            img_date = None
             try:
-                img_date = datetime.datetime.strptime(img_date_str, "%Y-%m-%d")
+                if img_date_str:
+                    img_date = datetime.datetime.strptime(img_date_str, "%Y-%m-%d")
             except:
+                pass  # img_date remains None
+            
+            # If date filters are active but image has no valid date, exclude it
+            # If no date filters, show all images regardless of date validity
+            if (start_date or end_date) and img_date is None:
                 return False
 
             img_type = img.get("transaction_type", "").strip().lower()
@@ -1175,9 +1255,9 @@ def open_admin_dashboard_group2(admin_data):
             if ttype != "all" and img_type != ttype:
                 return False
 
-            if start_date and img_date < start_date:
+            if start_date and img_date and img_date < start_date:
                 return False
-            if end_date and img_date > end_date:
+            if end_date and img_date and img_date > end_date:
                 return False
 
             return True
@@ -2333,7 +2413,7 @@ def open_admin_dashboard_group2(admin_data):
 
     tk.Label(
         footer_section,
-        text="Paolo Somido",
+        text="IT Department",
         font=("Segoe UI", get_font_size(10), "bold"),
         fg=COLORS['accent'],
         bg=COLORS['sidebar']
